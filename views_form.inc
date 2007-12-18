@@ -53,7 +53,9 @@ function theme_views_node_selector($element) {
   // the 'select all' checkbox if we are using checkboxes.
   $extra = $multiple ? theme('table_select_header_cell') : '&nbsp;';
 
-  array_unshift($view->table_header, $extra);
+  if ($view->table_header[0] != $extra) {
+    array_unshift($view->table_header, $extra);
+  }
 
   $output .= theme('views_form_table', $view->table_header, $rows);
   $output .= '</div>';
@@ -72,8 +74,8 @@ function theme_views_form_table($header, $rows) {
 /**
  * True views_node_selector form element expansion function. 
  *
- * @see views_elements() in views.module
- * @see expand_views_node_selector()  in views.module
+ * @see views_bulk_operations_elements() in views_bulk_operations.module
+ * @see expand_views_node_selector()  in views_bulk_operations.module
  * @see form_builder() in Drupal core includes/form.inc
  */
 function _expand_views_node_selector($element){
