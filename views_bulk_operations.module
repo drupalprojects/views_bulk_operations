@@ -100,16 +100,15 @@ function views_bulk_operations_views_tabs($op) {
 function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
   drupal_add_css(drupal_get_path('module', 'views_bulk_operations') . '/views_bulk_operations.css', 'module');
 
-  $form['step'] = array('#type' => 'hidden', '#value' => $step);
-  $form['vid'] = array('#type' => 'hidden', '#value' => isset($view->vid) ? $view->vid : $view->name);
-
   // Get the operations and based on them many things are decided.
-  $all_operations = _views_bulk_operations_get_operations('enabled', $form['vid']['#value']);
-  if (empty($all_operations)) { // No ops found: bail out
-    $error_message = t('No operations are enabled. You must enable one or more operations in order to use Views Bulk Operations.');
+  $enabled_operations = _views_bulk_operations_get_operations('enabled', $view->vid);
+
+  if (empty($enabled_operations)) { // No ops found: bail out
+    $error_message = t('No operations are enabled. You must enable one or more
+      operations in order to use Views Bulk Operations.');
     drupal_set_message($error_message, 'error');
     drupal_goto($_GET['q'].'/operations');
-  } elseif (count($all_operations) == 1) { // One op found: special case
+  } elseif (count($enabled_operations) == 1) { // One op found: special case
     $form['#multistep'] = FALSE;
     $form['#redirect'] = FALSE;
     $step = VIEWS_BULK_OPS_STEP_SINGLE;
@@ -119,25 +118,28 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
     $step = isset($form_values) ? (int) $form_values['step'] + 1: VIEWS_BULK_OPS_STEP_VIEW;
     if ($step == VIEWS_BULK_OPS_STEP_CONFIG) {
       $action = $form_values['action'];
-      if (!isset($all_operations[$action]) || !$all_operations[$action]['configurable']) {
+      if (!isset($enabled_operations[$action]) || !$enabled_operations[$action]['configurable']) {
         $step = VIEWS_BULK_OPS_STEP_CONFIRM;
       }
     }
   }
 
+  $form['step'] = array('#type' => 'hidden', '#value' => $step);
+  $form['vid'] = array('#type' => 'hidden', '#value' => $view->vid);
+
   switch ($step) {
   case VIEWS_BULK_OPS_STEP_SINGLE: // Show the full thing for a single action
-    $keys   = array_keys($all_operations);
+    $keys   = array_keys($enabled_operations);
     $action = $keys[0];
     $form['action'] = array(
       '#type' => 'hidden',
       '#value' => $action,
     );
-    if ($all_operations[$action]['configurable']) {
-      $form_action = call_user_func($all_operations[$action]['callback'], 'form', array(), array());
+    if ($enabled_operations[$action]['configurable']) {
+      $form_action = call_user_func($enabled_operations[$action]['callback'], 'form', array(), array());
       $form['arguments'] = array(
         '#type' => 'fieldset',
-        '#title' => t($all_operations[$action]['label']),
+        '#title' => t($enabled_operations[$action]['label']),
         '#collapsible' => FALSE,
       );
       $form['arguments'] = array_merge($form['arguments'], $form_action);
@@ -153,12 +155,13 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
     );
     $form['execute'] = array(
       '#type' => 'submit',
-      '#value' => t($all_operations[$action]['label']),
+      '#value' => t($enabled_operations[$action]['label']),
     );
     break;
+
   case VIEWS_BULK_OPS_STEP_VIEW: // Show the view
     $options[0] = t('- Choose an operation -');
-    foreach ($all_operations as $operation => $values) {
+    foreach ($enabled_operations as $operation => $values) {
       $options[$operation] = $values['label'];
     }
     $form['select'] = array(
@@ -192,6 +195,7 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
     );
     $form['#redirect'] = FALSE;
     break;
+
   case VIEWS_BULK_OPS_STEP_CONFIG: // Create the action form to allow configuring parameters
     $view->use_pager = FALSE;
     $action = $form_values['action'];
@@ -203,7 +207,7 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
       '#type' => 'hidden',
       '#value' => serialize($form_values['nodes']),
     );
-    $form_action = call_user_func($all_operations[$action]['callback'], 'form', array(), array());
+    $form_action = call_user_func($enabled_operations[$action]['callback'], 'form', array(), array());
     $form = array_merge($form, $form_action);
     $form['action_elements'] = array(
       '#type' => 'hidden',
@@ -214,12 +218,12 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
       '#value' => t('Next'),
     );
     $form['#redirect'] = FALSE;
-    drupal_set_title(t('Set parameters for \'%action\'', array('%action' => $all_operations[$action]['label'])));
+    drupal_set_title(t('Set parameters for \'%action\'', array('%action' => $enabled_operations[$action]['label'])));
     break;
   case VIEWS_BULK_OPS_STEP_CONFIRM: // Display the final confirmation
     $view->use_pager = FALSE;
     $action = $form_values['action'];
-    $configurable = isset($all_operations[$action]) && $all_operations[$action]['configurable'];
+    $configurable = isset($enabled_operations[$action]) && $enabled_operations[$action]['configurable'];
     $form['action'] = array(
       '#type' => 'hidden',
       '#value' => $action,
@@ -255,11 +259,12 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
     }
     $query = drupal_query_string_encode($_GET, array('q'));
     $form = confirm_form($form,
-        t('Are you sure you want to perform \'%action\' on selected nodes?', array('%action' => $all_operations[$action]['label'])),
+        t('Are you sure you want to perform \'%action\' on selected nodes?', array('%action' => $enabled_operations[$action]['label'])),
         $query ? array('path' => $_GET['q'], 'query' => $query) : array('path' => $_GET['q']),
         theme('views_bulk_operations_confirmation', $selected));
     break;
   }
+
   return $form;
 }
 
@@ -352,8 +357,8 @@ function views_bulk_operations_view_settings($view) {
 
   drupal_set_title(t('Bulk operations for view %view', array('%view' => $view->name)));
 
-  $all_operations = _views_bulk_operations_get_operations('all', $form['vid']['#value']);
-  $enabled_operations = _views_bulk_operations_get_operations('enabled', $form['vid']['#value']);
+  $all_operations = _views_bulk_operations_get_operations('all', $view->vid);
+  $enabled_operations = _views_bulk_operations_get_operations('enabled', $view->vid);
 
   // Operations checkboxes
   foreach ($all_operations as $operation => $values) {
@@ -401,13 +406,14 @@ function theme_views_bulk_operations_view_settings($form) {
 }
 
 function views_bulk_operations_view_settings_validate($form_id, $form_values) {
-  if (!array_sum($form_values['operations'])) {
+  if (array_sum($form_values['operations']) == 0) {
     form_set_error('operations', t('No operations are enabled. You must enable one or
       more operations in order to use Views Bulk Operations.'));
   }
 }
 
 function views_bulk_operations_view_settings_submit($form_id, $form_values) {
+
   $view = module_invoke('views', 'get_view', $form_values['vid']);
   $all_operations = _views_bulk_operations_get_operations('all', $form_values['vid']);
 
@@ -686,9 +692,8 @@ function theme_views_bulk_operations_confirmation($nodes) {
  * Fetch available operations.
  *
  * @param (string) $filter
- *  'enabled' - return data for operations that are enabled only
- *  'disabled' - return data for operations that are disabled only
  *  'all' - return data for all available operations
+ *  'enabled' - return data for operations that are enabled only
  *
  * @param (string) $vid
  *   The ID of the view whose operations we are selecting
@@ -781,7 +786,6 @@ function _views_bulk_operations_get_operations($filter, $vid) {
       break;
 
     case 'enabled':
-    case 'disabled':
       if (empty($all_operations)) {
         $stored_operations = _views_bulk_operations_get_operations('all', $vid);
       }
@@ -794,6 +798,7 @@ function _views_bulk_operations_get_operations($filter, $vid) {
       break;
   }
   asort($return_operations);
+
   return $return_operations;
 }
 
