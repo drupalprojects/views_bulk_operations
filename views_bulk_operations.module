@@ -296,7 +296,13 @@ function views_bulk_operations_form_validate($form_id, $form_values) {
     if ($operations[$action]['configurable']) {
       call_user_func($operations[$action]['callback'], 'validate', $form_values, array());
     }
-  } 
+  }
+
+  if ($form_values['step'] == VIEWS_BULK_OPS_STEP_CONFIG ||
+      $form_values['step'] == VIEWS_BULK_OPS_STEP_CONFIRM) {
+    $view = module_invoke('views', 'get_view', $form_values['vid']);
+    $view->use_pager = FALSE;
+  }
 }
 
 function views_bulk_operations_form_submit($form_id, $form_values) {
