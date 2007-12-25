@@ -101,7 +101,10 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
   drupal_add_css(drupal_get_path('module', 'views_bulk_operations') . '/views_bulk_operations.css', 'module');
 
   // Get the operations and based on them many things are decided.
-  $enabled_operations = _views_bulk_operations_get_operations('enabled', $view->vid);
+  $form['step'] = array('#type' => 'hidden', '#value' => $step);
+  $form['vid'] = array('#type' => 'hidden', '#value' => isset($view->vid) ? $view->vid : $view->name);
+
+  $enabled_operations = _views_bulk_operations_get_operations('enabled', $form['vid']['#value']);
 
   if (empty($enabled_operations)) { // No ops found: bail out
     $error_message = t('No operations are enabled. You must enable one or more
@@ -123,9 +126,6 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
       }
     }
   }
-
-  $form['step'] = array('#type' => 'hidden', '#value' => $step);
-  $form['vid'] = array('#type' => 'hidden', '#value' => $view->vid);
 
   switch ($step) {
     case VIEWS_BULK_OPS_STEP_SINGLE: // Show the full thing for a single action
