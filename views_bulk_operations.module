@@ -356,8 +356,8 @@ function views_bulk_operations_view_settings($view) {
 
   drupal_set_title(t('Bulk operations for view %view', array('%view' => $view->name)));
 
-  $all_operations = _views_bulk_operations_get_operations('all', $view->vid);
-  $enabled_operations = _views_bulk_operations_get_operations('enabled', $view->vid);
+  $all_operations = _views_bulk_operations_get_operations('all', $form['vid']['#value']);
+  $enabled_operations = _views_bulk_operations_get_operations('enabled', $form['vid']['#value']);
 
   // Operations checkboxes
   foreach ($all_operations as $operation => $values) {
