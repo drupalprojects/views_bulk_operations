@@ -1,0 +1,114 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Debugging actions within views bulk operations. Enable module and use these
+ * actions from within VBO. They don't actually do anything.
+ */
+
+/**
+ * Test configurable textareas
+ */
+function action_vbo_textarea($op, $edit = array(), $node) {
+  switch($op) {
+    case 'metadata':
+      return array(
+        'description'  => t('VBO Debug: select with textarea, print $edit'),
+        'type'         => t('Node'),
+        'batchable'    => TRUE,
+        'configurable' => TRUE,
+      );
+
+    case 'do':
+      // DEBUG
+      if (empty($edit)) {
+        drupal_set_message('DEBUG: Got empty form!');
+      }
+      else {
+        drupal_set_message('DEBUG: Got form: <pre>' . print_r($edit, TRUE) . "</pre>");
+      }
+      break;
+
+    case 'form':
+
+      $form['aaa'] = array(
+        '#type'              => 'select',
+        '#title'             => t('Select area'),
+        '#description'       => t('dummy.'),
+        '#options'       => array(
+          0 => 'Zero',
+          1 => 'One',
+          2 => 'Two',
+          3 => 'Thre',
+          4 => 'Four',
+        ),
+      );
+
+      $form['sss'] = array(
+        '#type'          => 'textarea',
+        '#title'         => t('text area'),
+        '#description'   => t('this textarea appears on confirmation page.'),
+      );
+
+      return $form;
+
+    // validate the HTML form
+    case 'validate':
+      return TRUE;
+
+    // process the HTML form to store configuration
+    case 'submit':
+      return '';
+  }
+}
+
+/**
+ * select fields (provoke htmlspecialchars error)
+ */
+function action_vbo_select($op, $edit = array(), $node) {
+  switch($op) {
+    case 'metadata':
+      return array(
+        'description'  => t('VBO Debug: select lists & htmlchars errors, print $edit'),
+        'type'         => t('Node'),
+        'batchable'    => TRUE,
+        'configurable' => TRUE,
+      );
+
+    case 'do':
+      // DEBUG
+      if (empty($edit)) {
+        drupal_set_message('DEBUG: Got empty form!');
+      }
+      else {
+        drupal_set_message('DEBUG: Got form<pre>' . print_r($edit, TRUE) . "</pre>");
+      }
+      break;
+
+    case 'form':
+      $form['lifewire_exclusive'] = array(
+        '#type'          => 'select',
+        '#title'         => t('Select'),
+        '#description'   => t('provoke htmlspecialchars error.'),
+        '#default_value' => 0,
+        '#options'       => array(
+          0 => 'Zero',
+          1 => 'One',
+          2 => 'Two',
+          3 => 'Thre',
+          4 => 'Four',
+        ),
+      );
+
+      return $form;
+
+    // validate the HTML form
+    case 'validate':
+      return TRUE;
+
+    // process the HTML form to store configuration
+    case 'submit':
+      return '';
+  }
+}
