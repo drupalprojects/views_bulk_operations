@@ -32,7 +32,7 @@ function action_vbo_textarea($op, $edit = array(), $node) {
 
     case 'form':
 
-      $form['aaa'] = array(
+      $form['select'] = array(
         '#type'              => 'select',
         '#title'             => t('Select area'),
         '#description'       => t('dummy.'),
@@ -40,12 +40,12 @@ function action_vbo_textarea($op, $edit = array(), $node) {
           0 => 'Zero',
           1 => 'One',
           2 => 'Two',
-          3 => 'Thre',
+          3 => 'Three',
           4 => 'Four',
         ),
       );
 
-      $form['sss'] = array(
+      $form['textarea'] = array(
         '#type'          => 'textarea',
         '#title'         => t('text area'),
         '#description'   => t('this textarea appears on confirmation page.'),
@@ -59,7 +59,12 @@ function action_vbo_textarea($op, $edit = array(), $node) {
 
     // process the HTML form to store configuration
     case 'submit':
-      return '';
+      $params = array(
+        'select'   => $edit['select'],
+        'textarea' => $edit['textarea'],
+      );
+
+      return $params;
   }
 }
 
@@ -87,7 +92,7 @@ function action_vbo_select($op, $edit = array(), $node) {
       break;
 
     case 'form':
-      $form['lifewire_exclusive'] = array(
+      $form['select'] = array(
         '#type'          => 'select',
         '#title'         => t('Select'),
         '#description'   => t('provoke htmlspecialchars error.'),
@@ -96,7 +101,7 @@ function action_vbo_select($op, $edit = array(), $node) {
           0 => 'Zero',
           1 => 'One',
           2 => 'Two',
-          3 => 'Thre',
+          3 => 'Three',
           4 => 'Four',
         ),
       );
@@ -109,6 +114,58 @@ function action_vbo_select($op, $edit = array(), $node) {
 
     // process the HTML form to store configuration
     case 'submit':
-      return '';
+      $params = array(
+        'select'   => $edit['select'],
+      );
+
+      return $params;
+  }
+}
+
+/**
+ * select fields (provoke htmlspecialchars error)
+ */
+function action_vbo_formerror($op, $edit = array(), $node) {
+  switch($op) {
+    case 'metadata':
+      return array(
+        'description'  => t('VBO Debug: form will always fail'),
+        'type'         => t('Node'),
+        'batchable'    => TRUE,
+        'configurable' => TRUE,
+      );
+
+    case 'do':
+      break;
+
+    case 'form':
+      $form['select'] = array(
+        '#type'          => 'select',
+        '#title'         => t('Select'),
+        '#description'   => t('Make sure form errors are caught by VBO.'),
+        '#default_value' => 0,
+        '#options'       => array(
+          0 => 'Zero',
+          1 => 'One',
+          2 => 'Two',
+          3 => 'Three',
+          4 => 'Four',
+        ),
+      );
+
+      return $form;
+
+    // validate the HTML form
+    case 'validate':
+      form_set_error('select', "This should always fail!");
+      break;
+
+    // process the HTML form to store configuration
+    case 'submit':
+      $params = array(
+        'select'   => $edit['select'],
+      );
+
+      return $params;
   }
 }
