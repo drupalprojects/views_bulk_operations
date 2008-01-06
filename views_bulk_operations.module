@@ -209,6 +209,10 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
       );
       $form_action = call_user_func($enabled_operations[$action]['callback'], 'form', array(), array());
       $form = array_merge($form, $form_action);
+      // 'action_elements' is where we store the key values of the configurable
+      // action form elements so that we can extract just those form values
+      // later and serialize them in $preserved_action_form_elements for hiding
+      // in the confirmation page
       $form['action_elements'] = array(
         '#type' => 'hidden',
         '#value' => serialize(array_keys($form_action)),
@@ -229,23 +233,29 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
         '#value' => $action,
       );
       if ($configurable) {
+        $preserved_action_form_elements = array();
+
         // If this action is configurable, we came from a VIEWS_BULK_OPS_STEP_CONFIG.
         // $form_values['nodes'] is already serialized.
         $form['nodes'] = array(
           '#type' => 'hidden',
           '#value' => $form_values['nodes'],
         );
-        // Gather the form values for the action configuration and store them in the
-        // form as hidden elements to be picked up by the submit function.
-        // WARNING: This might break for complex values so it would be wiser to
-        // serialize here and unserialize in the submit function.
-        $form_action = unserialize($form_values['action_elements']);
-        foreach ($form_action as $key) {
-          $form[$key] = array(
-            '#type' => 'hidden',
-            '#value' => $form_values[$key],
-          );
+        // Gather the form values for the action form elements and preserve them
+        // in the confirmation page form as a serialized value in a hidden
+        // element to be picked up by the submit function.
+        $action_elements = unserialize($form_values['action_elements']);
+        foreach ($action_elements as $key) {
+          if (isset($form_values[$key])) {
+            $preserved_action_form_elements[$key] = $form_values[$key];
+          }
         }
+
+        $form['preserved_action_form_elements'] = array(
+          '#type' => 'hidden',
+          '#value' => serialize($preserved_action_form_elements),
+        );
+
         $selected = unserialize($form_values['nodes']); // We'll use that in the confirm_form
       }
       else {
@@ -288,7 +298,7 @@ function views_bulk_operations_form_validate($form_id, $form_values) {
     if (!$form_values['action']) { // No action selected
       form_set_error('action', t('No action selected. Please select an action to perform.'));
     }
-  } 
+  }
   if ($form_values['step'] == VIEWS_BULK_OPS_STEP_CONFIG ||
       $form_values['step'] == VIEWS_BULK_OPS_STEP_SINGLE) {
     $action = $form_values['action'];
@@ -309,6 +319,7 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
   switch ($form_values['step']) {
     case VIEWS_BULK_OPS_STEP_CONFIRM:
       $nodes = unserialize($form_values['nodes']);
+      $preserved_action_form_elements = unserialize($form_values['preserved_action_form_elements']);
       if (!is_array($nodes)) {
         return;
       }
@@ -343,8 +354,9 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
         if (is_numeric($value) && $value > 0) {
           $node = node_load($value);
           $params = array();
+
           if ($operations[$action]['configurable']) {
-            $params = call_user_func($operations[$action]['callback'], 'submit', $form_values, array());
+            $params = call_user_func($operations[$action]['callback'], 'submit', $preserved_action_form_elements, array());
           }
           call_user_func($operations[$action]['callback'], 'do', $params, $node);
           drupal_set_message(t('Performed %action on node %nid.', array('%action' => $operations[$action]['label'], '%nid' => $node->title)));
