@@ -1,5 +1,0 @@
-; $Id$
-name = VBO Actions Debugger
-description = Debug tool for actions as used in views bulk operations. Developer use only.
-package = Views
-dependencies = views views_bulk_operations
