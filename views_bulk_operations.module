@@ -340,7 +340,7 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
   $action = $form_values['action'];
   $operations = _views_bulk_operations_get_operations('enabled', $form_values['vid']);
 
-  if (isset($operations[$action]) && function_exists($operations[$action]['callback'])) {
+  if (isset($operations[$action]) && (function_exists($operations[$action]['callback']) || is_numeric($operations[$action]['callback']))) {
     // NODE OPERATIONS
     if ($operations[$action]['type'] == 'node') {
       $nodes = array_filter($nodes);
@@ -408,15 +408,24 @@ function _views_bulk_operations_action_submit($action, $form_id, $form_values) {
   }
 }
 
+function _views_bulk_operations_is_actions_6() {
+  $info = _module_parse_info_file(drupal_get_path('module', 'actions').'/actions.info');
+  return (bool) preg_match('/^5.[x1-9]-2.[x1-9]/', $info['version']);
+}
+
 function _views_bulk_operations_action_do($action, $node, $context) {
   $action_do = $action['callback'];
-  $info = _module_parse_info_file(drupal_get_path('module', 'actions').'/actions.info');
-  if (preg_match('/^5.[x1-9]-2.[x1-9]/', $info['version'])) { // Drupal-6-style actions
-    call_user_func($action_do, $node, $context);
+  if (_views_bulk_operations_is_actions_6()) { // Drupal-6-style actions
+    actions_do($action['callback'], $node, $context);
     node_save($node);
   }
   else {
-    call_user_func($action_do, 'do', $context, $node);
+    if (is_numeric($action_do)) { // Custom action
+      actions_do($action_do, $node);
+    }
+    else {
+      call_user_func($action_do, 'do', $context, $node);
+    }
   }
 }
 
@@ -452,7 +461,6 @@ function views_bulk_operations_view_settings($view) {
 }
 
 function theme_views_bulk_operations_view_settings($form) {
-
   $output = t('
     <p>These settings determine which actions will be available from within a
     bulk operations view form. Operations selected here will be available for
@@ -487,7 +495,6 @@ function views_bulk_operations_view_settings_validate($form_id, $form_values) {
 }
 
 function views_bulk_operations_view_settings_submit($form_id, $form_values) {
-
   $view = module_invoke('views', 'get_view', $form_values['vid']);
   $all_operations = _views_bulk_operations_get_operations('all', $form_values['vid']);
 
@@ -712,7 +719,6 @@ function views_bulk_operations_node_operations() {
  *
  */
 function views_bulk_operations_delete_nodes($nodes) {
-
   foreach ($nodes as $nid) {
     $node = node_load($nid);
 
@@ -835,7 +841,7 @@ function _views_bulk_operations_get_operations($filter, $vid) {
 
       // Actions Operations (if module available)
       if (module_exists('actions')) {
-        $action_operations = actions_list();
+        $action_operations = actions_list() + _views_bulk_operations_get_custom_actions();
 
         foreach ($action_operations as $callback => $values) {
           // we do not want to include ALL actions as some are not 'node
@@ -852,7 +858,7 @@ function _views_bulk_operations_get_operations($filter, $vid) {
             $new_operations[$key] = array(
               'label'              => $values['description'],
               'callback'           => $callback,
-              'callback arguments' => NULL, // doesn't apply to action operations
+              'callback arguments' => $values['parameters'],
               'enabled'            => $enabled,
               'configurable'       => $values['configurable'],
               'type'               => 'action',
@@ -882,6 +888,25 @@ function _views_bulk_operations_get_operations($filter, $vid) {
   asort($return_operations);
 
   return $return_operations;
+}
+
+function _views_bulk_operations_get_custom_actions() {
+  $actions = array();
+  if (_views_bulk_operations_is_actions_6()) {
+    $result = db_query("SELECT * FROM {actions} WHERE parameters > ''");
+  }
+  else {
+    $result = db_query("SELECT *, params AS parameters FROM {actions} WHERE params > ''");
+  }
+  while ($action = db_fetch_object($result)) {
+    $actions[$action->aid] = array(
+      'description' => $action->description,
+      'type' => $action->type,
+      'configurable' => FALSE,
+      'parameters' => $actions->parameters,
+    );
+  }
+  return $actions;
 }
 
 function views_bulk_operations_views_links($type, $view) {
@@ -918,3 +943,4 @@ function expand_views_node_selector($element) {
   include_once drupal_get_path('module', 'views_bulk_operations') . '/views_form.inc';
   return _expand_views_node_selector($element);
 }
+
