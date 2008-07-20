@@ -108,7 +108,7 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
     $error_message = t('No operations are enabled. You must enable one or more
       operations in order to use Views Bulk Operations.');
     drupal_set_message($error_message, 'error');
-    drupal_goto($_GET['q'].'/operations');
+    drupal_goto($view->url.'/operations');
   } 
   elseif (count($enabled_operations) == 1) { // One op found: special case
     $form['#multistep'] = FALSE;
