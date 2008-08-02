@@ -278,13 +278,16 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
           theme('views_bulk_operations_confirmation', $selected));
       break;
   }
+
+  // Use views_bulk_operations_form_submit() for form submit, regardless of form_id
+  $form['#submit'] = array('views_bulk_operations_form_submit' => 1);
   return $form;
 }
 
 function views_bulk_operations_form_alter($form_id, &$form) {
   if ($form_id == 'views_filters') {
     // We only display the filter form on the first page.
-    if ($_POST['form_id'] == 'views_bulk_operations_form' && isset($_POST['step']) && isset($_POST['nodes'])) {
+    if ((strpos($_POST['form_id'], 'views_bulk_operations_form') === 0) && isset($_POST['step']) && isset($_POST['nodes'])) {
       $form['#prefix'] = '<div style="display: none">';
       $form['#suffix'] = '</div>';
     }
@@ -749,7 +752,14 @@ function views_bulk_operations_delete_nodes($nodes) {
 }
 
 function theme_views_bulk_operations_view($view, $nodes, $type) {
-  $output = drupal_get_form('views_bulk_operations_form', $view, $nodes, $type);
+  static $form_suffix;
+  if (isset($form_suffix)) {
+    $form_suffix++;
+  }
+  else {
+    $form_suffix = 1;
+  }
+  $output = drupal_get_form('views_bulk_operations_form_' . $form_suffix, $view, $nodes, $type);
   return $output;
 }
 
@@ -942,5 +952,25 @@ function views_bulk_operations_elements() {
 function expand_views_node_selector($element) {
   include_once drupal_get_path('module', 'views_bulk_operations') . '/views_form.inc';
   return _expand_views_node_selector($element);
+}
+
+/**
+ * hook_forms() implementation
+ * force each instance of function to use the
+ * same callback
+ */
+function views_bulk_operations_forms() {
+  // Get the form ID.
+  $args = func_get_args();
+  $form_id = $args[0][0];
+
+  // Ensure we map a callback for our form and not something else.
+  $forms = array();
+  if (strpos($form_id, 'views_bulk_operations_form') === 0) {
+    // Let the forms API know where to get the form data corresponding
+    // to this form id.
+    $forms[$form_id] = array('callback' => 'views_bulk_operations_form');
+  }
+  return $forms;
 }
 
