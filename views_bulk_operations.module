@@ -281,6 +281,7 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
 
   // Use views_bulk_operations_form_submit() for form submit, regardless of form_id
   $form['#submit'] = array('views_bulk_operations_form_submit' => 1);
+  $form['#validate'] = array('views_bulk_operations_form_validate' => array());
   return $form;
 }
 
