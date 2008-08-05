@@ -444,7 +444,7 @@ function views_bulk_operations_view_settings($view) {
 
   drupal_set_title(t('Bulk operations for view %view', array('%view' => $view->name)));
 
-  $all_operations = _views_bulk_operations_get_operations('all', $form['vid']['#value']);
+  $all_operations = _views_bulk_operations_get_operations('refresh', $form['vid']['#value']);
   $enabled_operations = _views_bulk_operations_get_operations('enabled', $form['vid']['#value']);
 
   // Operations checkboxes
@@ -507,7 +507,7 @@ function views_bulk_operations_view_settings_submit($form_id, $form_values) {
   }
 
   // store serialized data
-  variable_set('views_bulk_operations_prefs_' . $form_values['vid'], $all_operations);
+  _views_bulk_operations_set('views_bulk_operations_prefs_' . $form_values['vid'], $all_operations);
 
   // return to view
   if (isset($view->url)) {
@@ -787,8 +787,10 @@ function theme_views_bulk_operations_confirmation($nodes) {
  * Fetch available operations.
  *
  * @param (string) $filter
- *  'all' - return data for all available operations
- *  'enabled' - return data for operations that are enabled only
+ *  'refresh' - build operations data from scratch
+ *  'all' - return stored data for all available operations
+ *  'enabled' - return stored data for operations that are enabled only
+ *  'disabled' - return stored data for operations that are disabled only
  *
  * @param (string) $vid
  *   The ID of the view whose operations we are selecting
@@ -808,26 +810,19 @@ function theme_views_bulk_operations_confirmation($nodes) {
  *   )
  */
 function _views_bulk_operations_get_operations($filter, $vid) {
-  $all_operations = array();
-  $return_operations = array();
-
-  $stored_operations = variable_get('views_bulk_operations_prefs_' . $vid, array());
+  $stored_operations = _views_bulk_operations_get('views_bulk_operations_prefs_' . $vid, array());
 
   switch ($filter) {
-    case 'all':
-      // in this case, we want to check for availability of new actions as well
-      // as fetching the settings for existing actions We need to be mindful of
-      // actions that may no longer exist as well so we'll remove anything that
-      // remains in $orphaned_operations at the end
+  case 'all':
+    if (empty($store_operations)) return _views_bulk_operations_get_operations('refresh', $vid);
+    asort($stored_operations);
+    return $stored_operations;
 
-      // we save stored data in $stored_operations and pass values into
-      // $new_operations only if operation is still valid (prevents removed
-      // operations from appearing)
+  case 'refresh':
       $new_operations = array();
 
       // Core 'node operations'
       $node_operations = module_invoke_all('node_operations');
-
       foreach ($node_operations as $operation) {
         // some node operations do not provide a valid callback
         // (such as the 'delete' operation)
@@ -878,26 +873,24 @@ function _views_bulk_operations_get_operations($filter, $vid) {
         }
       }
 
-      $return_operations = $new_operations;
-      // save latest 'enabled actions' preferences for this view
-      variable_set('views_bulk_operations_prefs_' . $vid, $new_operations);
-      break;
+      _views_bulk_operations_set('views_bulk_operations_prefs_' . $vid, $new_operations);
+      asort($new_operations);
+      return $new_operations;
 
     case 'enabled':
-      if (empty($all_operations)) {
-        $stored_operations = _views_bulk_operations_get_operations('all', $vid);
-      }
+    case 'disabled':
+      $filtered_operations = array();
+
       $state = $filter == 'enabled' ? 1 : 0;
       foreach ($stored_operations as $operation => $values) {
         if ($values['enabled'] == $state) {
-          $return_operations[$operation] = $values;
+          $filtered_operations[$operation] = $values;
         }
       }
-      break;
+      
+      asort($filtered_operations);
+      return $filtered_operations;
   }
-  asort($return_operations);
-
-  return $return_operations;
 }
 
 function _views_bulk_operations_get_custom_actions() {
@@ -917,6 +910,16 @@ function _views_bulk_operations_get_custom_actions() {
     );
   }
   return $actions;
+}
+
+function _views_bulk_operations_get($name, $default) {
+  $value = db_result(db_query("SELECT value FROM {vbo_settings} WHERE name='%s'", $name));
+  return ($value === FALSE ? $default : unserialize($value));
+}
+
+function _views_bulk_operations_set($name, $value) {
+  db_query("DELETE FROM {vbo_settings} WHERE name='%s'", $name);
+  db_query("INSERT INTO {vbo_settings} (name, value) VALUES ('%s', '%s')", $name, serialize($value));
 }
 
 function views_bulk_operations_views_links($type, $view) {
