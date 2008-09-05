@@ -12,6 +12,8 @@
  * Display the nodes of a view as a form in a table with radios or checkboxes.
  */
 function theme_views_node_selector($element) {
+  drupal_add_js(drupal_get_path('module', 'views_bulk_operations').'/views_bulk_operations.js');
+
   $fields = _views_get_fields();
   $view = $element['#view'];
   $multiple = $element['#multiple'];
@@ -57,7 +59,23 @@ function theme_views_node_selector($element) {
     array_unshift($view->table_header, $extra);
   }
 
+  // Add the first row as option to select all records across all pages.
+  if ($view->use_pager) {
+    $arow = array(
+      array(
+        'data' => '<span id="vbo-this-page">'. t('All <strong>!nodes</strong> nodes on this page are selected.', array('!nodes' => count($element['#view_nodes'])))
+          .'&nbsp;<input type="button" id="vbo-select-all-pages" value="'. t('Select all !nodes nodes in this view.', array('!nodes' => $view->total_rows)) .'" /></span>'
+          .'<span id="vbo-all-pages" style="display: none">'. t('All <strong>!nodes</strong> nodes in this view are selected.', array('!nodes' => $view->total_rows)) 
+          .'&nbsp;<input type="button" id="vbo-select-this-page" value="'. t('Select only !nodes nodes on this page.', array('!nodes' => count($element['#view_nodes']))) .'" /></span>',
+        'class' => 'view-field view-field-select-all',
+        'colspan' => count($view->table_header) + 1,
+      ),
+    );
+    array_unshift($rows, $arow);
+  }
+
   $output .= theme('views_form_table', $view->table_header, $rows);
+  $output .= theme('hidden', $element['select_all']);
   $output .= '</div>';
 
   return theme('form_element', $element, $output);
@@ -81,7 +99,7 @@ function theme_views_form_table($header, $rows) {
 function _expand_views_node_selector($element){
   $options = array();
 
-  foreach($element['#view_nodes'] as $node) {
+  foreach ($element['#view_nodes'] as $node) {
     $options[$node->nid] = '';
   }
 
@@ -98,7 +116,7 @@ function _expand_views_node_selector($element){
   }
 
   // Check for disabled items
-  foreach($options as $nid => $v) {
+  foreach ($options as $nid => $v) {
     if (in_array($nid, $element['#disabled_nodes'])) {
       $element[$nid]['#disabled'] = TRUE;
     }
@@ -108,6 +126,13 @@ function _expand_views_node_selector($element){
     // Add CSS class.
     $element[$nid]['#attributes']['class'] = 'view-field';
   }
+
+  // FIXME I don't undertand custom form elements enough yet :-)
+  $element['#DANGEROUS_SKIP_CHECK'] = true;
+  $element['select_all'] = array(
+    '#type' => 'hidden',
+    '#value' => 0,
+  );
 
   return $element;
 }

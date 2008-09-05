@@ -125,7 +125,7 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
       }
     }
   }
-
+  
   // Get the operations and based on them many things are decided.
   $form['step'] = array('#type' => 'hidden', '#value' => $step);
   $form['vid'] = array('#type' => 'hidden', '#value' => isset($view->vid) ? $view->vid : $view->name);
@@ -263,13 +263,23 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
         $selected = unserialize($form_values['nodes']); // We'll use that in the confirm_form
       }
       else {
-        // If this action is not configurable, we skipped VIEWS_NULK_OPS_STEP_CONFIG.
+        // If this action is not configurable, we skipped VIEWS_BULK_OPS_STEP_CONFIG.
         // $form_values['nodes'] still needs to be serialized.
         $form['nodes'] = array(
           '#type' => 'hidden',
           '#value' => serialize($form_values['nodes']),
         );
         $selected = $form_values['nodes']; // We'll use that in the confirm_form
+      }
+      if ($selected['select_all']) { // User selected all nodes?
+        $items = views_build_view('items', $view, $view->args);
+        $selected = array();
+        foreach ($items['items'] as $node) {
+          $selected[$node->nid] = $node->nid;
+        }
+      } 
+      else {
+        unset($selected['select_all']);
       }
       $query = drupal_query_string_encode($_GET, array('q'));
       $form = confirm_form($form,
@@ -346,6 +356,18 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
 
   if (isset($operations[$action]) && (function_exists($operations[$action]['callback']) || is_numeric($operations[$action]['callback']))) {
 
+    // Check if the user selected all nodes.
+    if ($nodes['select_all']) {
+      $items = views_build_view('items', $view, $view->args);
+      $nodes = array();
+      foreach ($items['items'] as $node) {
+        $nodes[$node->nid] = $node->nid;
+      }
+    }
+    else {
+      unset($nodes['select_all']);
+    }
+
     // FIXME Hack to force actions_do() to process any number of invocations. 
     // Check http://drupal.org/node/290282 to understand more.
     variable_set('actions_max_stack', 10000000);
@@ -377,15 +399,10 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
         }
       }
     }
-    else { // we don't know what operation type this is! shouldn't happen
-      watchdog('views_bulk_operations', 'Unknown operation type (' . $operations[$action]['type'] . ')', WATCHDOG_ERROR);
-    }
 
     variable_set('actions_max_stack', 35);
   }
-  else { // an invalid or disabled action, shouldn't happen :)
-    watchdog('views_bulk_operations', 'Got invalid operation (' . $operations[$action]['callback'] . ')', WATCHDOG_ERROR);
-  }
+
   drupal_goto($_GET['q'], drupal_query_string_encode($_GET, array('q')));
 }
 
@@ -774,7 +791,7 @@ function theme_views_bulk_operations_view($view, $nodes, $type) {
 function theme_views_bulk_operations_confirmation($nodes) {
   $count = 0;
   $output = t('You selected the following nodes:').'<br /><ul>';
-  foreach($nodes as $nid) {
+  foreach ($nodes as $nid) {
     // Number of titles to display before we say "...and more"
     if ((VIEWS_BULK_OPS_MAX_CONFIRM_NODES > 0) && ($count >=  VIEWS_BULK_OPS_MAX_CONFIRM_NODES)) {
       $output .= '<li>'.t('...and %remaining more.', array('%remaining' => count($nodes) - $count)).'</li>';
