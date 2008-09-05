@@ -127,12 +127,9 @@ function _expand_views_node_selector($element){
     $element[$nid]['#attributes']['class'] = 'view-field';
   }
 
-  // FIXME I don't undertand custom form elements enough yet :-)
-  $element['#DANGEROUS_SKIP_CHECK'] = true;
-  $element['select_all'] = array(
-    '#type' => 'hidden',
-    '#value' => 0,
-  );
+  // Ummm unset the #options so that FAPI doesn't give me the "Illegal choice %choice in !name element" error.
+  unset($element['#options']);
+  $element['select_all'] = array('#type' => 'hidden', '#value' => 0);
 
   return $element;
 }
