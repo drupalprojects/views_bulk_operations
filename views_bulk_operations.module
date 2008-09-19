@@ -790,11 +790,11 @@ function theme_views_bulk_operations_view($view, $nodes, $type) {
 
 function theme_views_bulk_operations_confirmation($nodes) {
   $count = 0;
-  $output = t('You selected the following nodes:').'<br /><ul>';
+  $output = t('You selected the following !count nodes:', array('!count' => count($nodes))).'<br /><ul>';
   foreach ($nodes as $nid) {
     // Number of titles to display before we say "...and more"
     if ((VIEWS_BULK_OPS_MAX_CONFIRM_NODES > 0) && ($count >=  VIEWS_BULK_OPS_MAX_CONFIRM_NODES)) {
-      $output .= '<li>'.t('...and %remaining more.', array('%remaining' => count($nodes) - $count)).'</li>';
+      $output .= '<li>'.t('...and !remaining more.', array('!remaining' => count($nodes) - $count)).'</li>';
       break;
     }
     if (is_numeric($nid) && $nid > 0) {
