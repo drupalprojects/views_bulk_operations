@@ -840,7 +840,6 @@ function _views_bulk_operations_get_operations($filter, $vid) {
   switch ($filter) {
   case 'all':
     if (empty($store_operations)) return _views_bulk_operations_get_operations('refresh', $vid);
-    asort($stored_operations);
     return $stored_operations;
 
   case 'refresh':
@@ -899,7 +898,6 @@ function _views_bulk_operations_get_operations($filter, $vid) {
       }
 
       _views_bulk_operations_set('views_bulk_operations_prefs_' . $vid, $new_operations);
-      asort($new_operations);
       return $new_operations;
 
     case 'enabled':
@@ -913,7 +911,6 @@ function _views_bulk_operations_get_operations($filter, $vid) {
         }
       }
       
-      asort($filtered_operations);
       return $filtered_operations;
   }
 }
