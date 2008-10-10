@@ -855,7 +855,7 @@ function _views_bulk_operations_get_operations($filter, $vid) {
           continue;
         }
 
-        $key = md5($operation['callback']);
+        $key = md5($operation['callback'] . $operation['label']);
         $enabled = isset($stored_operations[$key]['enabled'])
           ? $stored_operations[$key]['enabled']
           : VIEWS_BULK_OPS_DEFAULT_OPERATION_ENABLE;
@@ -881,7 +881,7 @@ function _views_bulk_operations_get_operations($filter, $vid) {
           // want.
           foreach (array('node', 'workflow', 'email') as $type) {
             if (0 != strcasecmp($type, $values['type'])) continue;
-            $key = md5($callback);
+            $key = md5($callback . $values['description']);
             $enabled = isset($stored_operations[$key]['enabled'])
               ? $stored_operations[$key]['enabled']
               : VIEWS_BULK_OPS_DEFAULT_OPERATION_ENABLE;
