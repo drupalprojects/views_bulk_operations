@@ -79,8 +79,8 @@ function views_bulk_operations_menu($may_cache) {
     if ($view && isset($view->page_type) && $view->page_type == 'bulk') {
       $items[] = array(
         'path' => $path,
-        'title' => t('Operations'),
-        'description' => t('Select the operations to be displayed in the view.'),
+        'title' => t('Settings'),
+        'description' => t('Select the operations to be displayed in the view and other settings.'),
         'access' => user_access('administer views'),
         'callback' => 'drupal_get_form',
         'callback arguments' => array('views_bulk_operations_view_settings', $view),
@@ -350,60 +350,84 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
       return;
   }
 
-  // action should contain a valid callback
-  $action = $form_values['action'];
   $operations = _views_bulk_operations_get_operations('enabled', $form_values['vid']);
+  $operation = $operations[$form_values['action']];
+    
+  // Check if the user selected all nodes.
+  if ($nodes['select_all']) {
+    $items = views_build_view('items', $view, $view->args);
+    $nodes = array();
+    foreach ($items['items'] as $node) {
+      $nodes[$node->nid] = $node->nid;
+    }
+  }
+  else {
+    unset($nodes['select_all']);
+  }
+  $nodes = array_filter($nodes);
 
-  if (isset($operations[$action]) && (function_exists($operations[$action]['callback']) || is_numeric($operations[$action]['callback']))) {
+  // Set parameters.
+  $params = array();
+  if ($operation['configurable']) {
+    $params += _views_bulk_operations_action_submit($operation, $form_id, $preserved_action_form_elements);
+  }
+  if ($operation['type'] == 'node' && isset($operation['callback arguments'])) {
+    $params += $operation['callback arguments'];
+  }
+      
+  // FIXME Hack to force actions_do() to process any number of invocations. 
+  // Check http://drupal.org/node/290282 to understand more.
+  variable_set('actions_max_stack', 10000000);
 
-    // Check if the user selected all nodes.
-    if ($nodes['select_all']) {
-      $items = views_build_view('items', $view, $view->args);
-      $nodes = array();
-      foreach ($items['items'] as $node) {
-        $nodes[$node->nid] = $node->nid;
+  if (module_exists('job_queue') && variable_get('views_bulk_operations_queue_' . $form_values['vid'], 0)) { // Deferred execution
+    $function = $operation['type'] == 'action' ? '_views_bulk_operations_action_process' : '_views_bulk_operations_operation_process';
+    foreach ($nodes as $nid) {
+      $node = node_load($nid);
+      if (!$node) continue;
+      job_queue_add($function, t('Perform %action on node %title.', array('%action' => $operation['label'], '%title' => $node->title)), array($operation, $node, $params));
+    }
+    drupal_set_message(t('Enqueued %action on nodes %nid. Check the <a href="@queue">queued jobs page</a>.', 
+      array('%action' => $operation['label'], '%nid' => implode(', ', $nodes), '@queue' => url('admin/logs/job_queue'))));
+  }
+  else { // Direct execution
+    if ($operation['type'] == 'node') {
+      $args = array_merge(array($nodes), $params);
+      call_user_func_array($operation['callback'], $args);
+      drupal_set_message(t('Performed %action on nodes %nid.', array('%action' => $operation['label'], '%nid' => implode(', ', $nodes))));
+    }
+    else if ($operation['type'] == 'action') {
+      foreach ($nodes as $nid) {
+        $node = node_load($nid);
+        if (!$node) continue;
+        _views_bulk_operations_action_do($operation, $node, $params);
+        drupal_set_message(t('Performed %action on node %title.', array('%action' => $operation['label'], '%title' => $node->title)));
       }
     }
-    else {
-      unset($nodes['select_all']);
-    }
-
-    // FIXME Hack to force actions_do() to process any number of invocations. 
-    // Check http://drupal.org/node/290282 to understand more.
-    variable_set('actions_max_stack', 10000000);
-           
-    // NODE OPERATIONS
-    if ($operations[$action]['type'] == 'node') {
-      $nodes = array_filter($nodes);
-      if (isset($operations[$action]['callback arguments'])) {
-        $args = array_merge(array($nodes), $operations[$action]['callback arguments']);
-      }
-      else {
-        $args = array($nodes);
-      }
-      call_user_func_array($operations[$action]['callback'], $args);
-      drupal_set_message(t('Performed %action on nodes %nid.', array('%action' => $operations[$action]['label'], '%nid' => implode(',', $nodes))));
-    }
-    // ACTION OPERATIONS
-    else if ($operations[$action]['type'] == 'action') {
-      foreach ($nodes as $value) {
-        if (is_numeric($value) && $value > 0) {
-          $node = node_load($value);
-          $params = array();
-
-          if ($operations[$action]['configurable']) {
-            $params = _views_bulk_operations_action_submit($operations[$action], $form_id, $preserved_action_form_elements);
-          }
-          _views_bulk_operations_action_do($operations[$action], $node, $params);
-          drupal_set_message(t('Performed %action on node %nid.', array('%action' => $operations[$action]['label'], '%nid' => $node->title)));
-        }
-      }
-    }
-
-    variable_set('actions_max_stack', 35);
   }
 
+  variable_set('actions_max_stack', 35);
   drupal_goto($_GET['q'], drupal_query_string_encode($_GET, array('q')));
+}
+
+function views_bulk_operations_job_queue_functions() {
+  $functions['_views_bulk_operations_action_process'] = array(
+    'title' => t('Execute action'),
+  );
+  $functions['_views_bulk_operations_operation_process'] = array(
+    'title' => t('Execute node operation'),
+  );
+  return $functions;
+}
+
+function _views_bulk_operations_action_process($operation, $node, $params) {
+  _views_bulk_operations_action_do($operation, $node, $params);
+  drupal_set_message(t('Performed %action on node %title.', array('%action' => $operation['label'], '%title' => $node->title)));
+}
+
+function _views_bulk_operations_operation_process($operation, $node, $params) {
+  $args = array_merge(array(array($node->nid)), $params);
+  call_user_func_array($operation['callback'], $args);
+  drupal_set_message(t('Performed %action on node %title.', array('%action' => $operation['label'], '%title' => $node->title)));
 }
 
 function _views_bulk_operations_action_form($action) {
@@ -467,12 +491,26 @@ function views_bulk_operations_view_settings($view) {
   // Static views don't have a vid
   $form['vid'] = array('#type' => 'hidden', '#value' => isset($view->vid) ? $view->vid : $view->name);
 
-  drupal_set_title(t('Bulk operations for view %view', array('%view' => $view->name)));
+  // Other settings first.
+  if (module_exists('job_queue')) {
+    $form['job_queue'] = array(
+      '#type' => 'checkbox',
+      '#default_value' => variable_get('views_bulk_operations_queue_' . $form['vid']['#value'], 0),
+      '#title' => t('Background operations'),
+      '#description' => t('Check this box to enqueue the operations on selected nodes to be executed in the background, using the <a href="@jobqueue">Job queue module</a>.', array('@jobqueue' => url('http://drupal.org/project/job_queue'))),
+    );
+  }
+
+  drupal_set_title(t('Bulk operations settings for view %view', array('%view' => $view->name)));
 
   $all_operations = _views_bulk_operations_get_operations('refresh', $form['vid']['#value']);
   $enabled_operations = _views_bulk_operations_get_operations('enabled', $form['vid']['#value']);
 
   // Operations checkboxes
+  $form['operations'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Operations'),
+  );
   foreach ($all_operations as $operation => $values) {
     $form['operations'][$operation] = array(
       '#type'          => 'checkbox',
@@ -494,7 +532,7 @@ function theme_views_bulk_operations_view_settings($form) {
     bulk operations view form. Operations selected here will be available for
     execution on the form. If only one action is selected, no dropdown will
     be provided and users will be able to perform or configure the single
-    operation directly from the view form </p>
+    operation directly from the view form.</p>
   ');
 
   if (module_exists('actions')) {
@@ -533,6 +571,7 @@ function views_bulk_operations_view_settings_submit($form_id, $form_values) {
 
   // store serialized data
   _views_bulk_operations_set('views_bulk_operations_prefs_' . $form_values['vid'], $all_operations);
+  variable_set('views_bulk_operations_queue_' . $form_values['vid'], $form_values['job_queue']);
 
   // return to view
   if (isset($view->url)) {

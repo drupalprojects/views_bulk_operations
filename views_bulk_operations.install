@@ -33,5 +33,6 @@ function views_bulk_operations_update_1() {
 
 function views_bulk_operations_uninstall() {
   db_query("DROP TABLE {vbo_settings}");
+  db_query("DELETE FROM {variable} WHERE name LIKE 'views_bulk_operations%'");
 }
 
