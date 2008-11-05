@@ -1038,3 +1038,15 @@ function views_bulk_operations_forms() {
   return $forms;
 }
 
+function views_bulk_operations_action_info() {
+  return array(
+    'taxonomy_action' => array(
+      'type' => 'node',
+      'description' => t('Modify node\'s taxonomy terms'),
+      'configurable' => TRUE,
+      'behavior' => array('changes_node_property'),
+      'hooks' => array(),
+    ),
+  );
+}
+

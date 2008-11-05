@@ -1,24 +1,29 @@
 <?php
 
-function views_bulk_operations_action_info() {
-  return array(
-    'taxonomy_action' => array(
-      'type' => 'node',
-      'description' => t('Modify node\'s taxonomy terms'),
-      'configurable' => TRUE,
-      'behavior' => array('changes_node_property'),
-      'hooks' => array(),
-    ),
-  );                         
-}
+define('TAXONOMY_ACTION_ADD', 0);
+define('TAXONOMY_ACTION_REPLACE', 1);
+define('TAXONOMY_ACTION_DELETE', 2);
 
 function taxonomy_action(&$node, $context) {
   $terms = array();
   foreach ($context['terms'] as $tid) {
     $terms[$tid] = taxonomy_get_term($tid);
   }
-  if (!$context['replace']) {
-    $terms = array_merge($terms, taxonomy_node_get_terms($node->nid));
+	// check for add or delete
+  if ($context['do'] == TAXONOMY_ACTION_ADD || $context['do'] == TAXONOMY_ACTION_DELETE) {
+		$existing_terms = taxonomy_node_get_terms($node->nid);
+		if ($context['do'] == TAXONOMY_ACTION_DELETE) {
+			// delete terms
+			while (list($delete_tid) = each($terms)) {
+				if (array_key_exists($delete_tid,$existing_terms)) {
+					unset($existing_terms[$delete_tid]);
+				}
+			}
+			$terms = $existing_terms;
+		} else {
+			// add terms
+    	$terms = array_merge($terms, $existing_terms);
+		}
   }
   $node->taxonomy = $terms;
 }
@@ -36,27 +41,34 @@ function taxonomy_action_form($context) {
     '#default_value' => $context['terms'],
     '#multiple' => TRUE,
     '#size' => min(20, count($terms)),
-    '#description' => t('Choose the terms you want to associate with the nodes.'),
+    '#description' => t('Choose the terms you want to associate with or delete from the nodes.'),
+		'#weight' => -5,
   );
-  $form['replace'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Replace existing terms'),
-    '#default_value' => FALSE,
-    '#description' => t('Check this box to replace existing terms with selected ones. Leave unchecked to add the new terms.'),
+  $form['do'] = array(
+    '#type' => 'radios',
+    '#title' => t('Action to take'),
+		'#default_value' => TAXONOMY_ACTION_ADD,
+		'#options' => array(
+			TAXONOMY_ACTION_ADD => t('Add the selected terms'),
+			TAXONOMY_ACTION_REPLACE => t('Replace existing terms with selected ones'),
+			TAXONOMY_ACTION_DELETE => t('Delete selected terms')
+		),
+		'#required' => TRUE,
+		'#weight' => -2,
   );
-  return $form;
+	return $form;
 }
 
 function taxonomy_action_submit($form_id, $form_values) {
   return array(
-    'replace' => $form_values['replace'], 
+    'do' => $form_values['do'], 
     'terms' => $form_values['terms'],
   );
 }
 
 function taxonomy_action_validate($form_id, $form_values) {
-  if (!$form_values['replace'] && empty($form_values['terms'])) {
-    form_set_error('terms', t('You did not select any term nor did you choose to replace existing terms. Please select one or more terms.'));
+  if ($form_values['do'] != TAXONOMY_ACTION_REPLACE && empty($form_values['terms'])) {
+    form_set_error('terms', t('You did not select any term nor did you choose to replace existing terms. Please select one or more terms or choose to replace the terms.'));
   }
 }
 
