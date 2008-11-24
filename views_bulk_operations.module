@@ -371,6 +371,9 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
   if ($operation['configurable']) {
     $params += _views_bulk_operations_action_submit($operation, $form_id, $preserved_action_form_elements);
   }
+  else {
+    $params += $preserved_action_form_elements;
+  }
   if ($operation['type'] == 'node' && isset($operation['callback arguments'])) {
     $params += $operation['callback arguments'];
   }
