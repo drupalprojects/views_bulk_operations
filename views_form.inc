@@ -54,8 +54,7 @@ function theme_views_node_selector($element) {
   // Add a column to the header to accomodate our selection column, and include
   // the 'select all' checkbox if we are using checkboxes.
   $extra = $multiple ? theme('table_select_header_cell') : '&nbsp;';
-
-  if (is_array($view->table_header) && $view->table_header[0] != $extra) {
+  if (is_array($view->table_header)) {
     array_unshift($view->table_header, $extra);
   }
 
