@@ -381,7 +381,7 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
   // Check http://drupal.org/node/290282 to understand more.
   variable_set('actions_max_stack', 10000000);
 
-  if (module_exists('job_queue') && variable_get('views_bulk_operations_queue_' . $form_values['vid'], 0)) { // Deferred execution
+  if (module_exists('job_queue') && variable_get('vbo_queue_' . $form_values['vid'], 0)) { // Deferred execution
     $function = $operation['type'] == 'action' ? '_views_bulk_operations_action_process' : '_views_bulk_operations_operation_process';
     foreach ($nodes as $nid) {
       $node = node_load($nid);
@@ -497,7 +497,7 @@ function views_bulk_operations_view_settings($view) {
   if (module_exists('job_queue')) {
     $form['job_queue'] = array(
       '#type' => 'checkbox',
-      '#default_value' => variable_get('views_bulk_operations_queue_' . $form['vid']['#value'], 0),
+      '#default_value' => variable_get('vbo_queue_' . $form['vid']['#value'], 0),
       '#title' => t('Background operations'),
       '#description' => t('Check this box to enqueue the operations on selected nodes to be executed in the background, using the <a href="@jobqueue">Job queue module</a>.', array('@jobqueue' => url('http://drupal.org/project/job_queue'))),
     );
@@ -572,8 +572,8 @@ function views_bulk_operations_view_settings_submit($form_id, $form_values) {
   }
 
   // store serialized data
-  _views_bulk_operations_set('views_bulk_operations_prefs_' . $form_values['vid'], $all_operations);
-  variable_set('views_bulk_operations_queue_' . $form_values['vid'], $form_values['job_queue']);
+  _views_bulk_operations_set($form_values['vid'], $all_operations);
+  variable_set('vbo_queue_' . $form_values['vid'], $form_values['job_queue']);
 
   // return to view
   if (isset($view->url)) {
@@ -876,7 +876,7 @@ function theme_views_bulk_operations_confirmation($nodes) {
  *   )
  */
 function _views_bulk_operations_get_operations($filter, $vid) {
-  $stored_operations = _views_bulk_operations_get('views_bulk_operations_prefs_' . $vid, array());
+  $stored_operations = _views_bulk_operations_get($vid, array());
 
   switch ($filter) {
   case 'all':
@@ -938,7 +938,7 @@ function _views_bulk_operations_get_operations($filter, $vid) {
         }
       }
 
-      _views_bulk_operations_set('views_bulk_operations_prefs_' . $vid, $new_operations);
+      _views_bulk_operations_set($vid, $new_operations);
       return $new_operations;
 
     case 'enabled':

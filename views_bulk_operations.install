@@ -31,8 +31,20 @@ function views_bulk_operations_update_1() {
   return $ret;
 }
 
+function views_bulk_operations_update_2() {
+  $ret = array();
+  switch($GLOBALS['db_type']) {
+  case 'mysql':
+  case 'mysqli':
+    $ret[] = update_sql("UPDATE {vbo_settings} SET name = REPLACE(name, 'views_bulk_operations_prefs_', '')");
+    $ret[] = update_sql("UPDATE {variable} SET name = REPLACE(name, 'views_bulk_operations_queue_', 'vbo_queue_')");
+    break;
+  }
+  return $ret;
+}
+
 function views_bulk_operations_uninstall() {
   db_query("DROP TABLE {vbo_settings}");
-  db_query("DELETE FROM {variable} WHERE name LIKE 'views_bulk_operations%'");
+  db_query("DELETE FROM {variable} WHERE name LIKE 'vbo_queue_%'");
 }
 
