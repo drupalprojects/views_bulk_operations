@@ -765,58 +765,6 @@ function views_bulk_operations_views_tables() {
   return $tables;
 }
 
-/**
- * Implementation of hook_node_operations().
- */
-function views_bulk_operations_node_operations() {
-  $operations = array(
-    'bulk_delete' => array(
-      'label' => t('Delete'),
-      'callback' => 'views_bulk_operations_delete_nodes',
-    ),
-  );
-  return $operations;
-}
-
-/**
- * Based on node_delete()
- *
- * We implement our own node delete operation because we do not follow the
- * conventional Drupal method of node deletion, which includes its own
- * confirmation page. We use our own confirmation page and do our own
- * access control checks.
- *
- */
-function views_bulk_operations_delete_nodes($nodes) {
-  foreach ($nodes as $nid) {
-    $node = node_load($nid);
-
-    if (node_access('delete', $node)) {
-      db_query('DELETE FROM {node} WHERE nid = %d', $node->nid);
-      db_query('DELETE FROM {node_revisions} WHERE nid = %d', $node->nid);
-
-      // Call the node-specific callback (if any):
-      node_invoke($node, 'delete');
-      node_invoke_nodeapi($node, 'delete');
-
-      // Remove this node from the search index if needed.
-      if (function_exists('search_wipe')) {
-        search_wipe($node->nid, 'node');
-      }
-      drupal_set_message(t('%title has been deleted.', array('%title' => $node->title)));
-      watchdog('content', t('@type: deleted %title.', array('@type' => t($node->type), '%title' => $node->title)));
-      $deleted_nodes++;
-    }
-    else {
-      drupal_set_message(t('Cannot delete "%title", permission denied.', array('%title' => $node->title)));
-    }
-  }
-  if ($deleted_nodes > 0) {
-    // Clear the cache so anonymous users no longer see deleted nodes.
-    cache_clear_all();
-  }
-}
-
 function theme_views_bulk_operations_view($view, $nodes, $type) {
   static $form_suffix;
   if (isset($form_suffix)) {
@@ -1040,16 +988,17 @@ function views_bulk_operations_forms() {
   return $forms;
 }
 
+/**
+ * Implementation of hook_action_info().
+ */
 function views_bulk_operations_action_info() {
   $actions = array();
-  if (module_exists('taxonomy')) {
-    $actions['taxonomy_action'] = array(
-      'type' => 'node',
-      'description' => t('Modify node\'s taxonomy terms'),
-      'configurable' => TRUE,
-      'behavior' => array('changes_node_property'),
-      'hooks' => array(),
-    );
+  $files = file_scan_directory(drupal_get_path('module', 'views_bulk_operations'), '(.*).action.inc');
+  if ($files) foreach ($files as $file) {
+    require_once($file->filename);
+    $action_info_fn = str_replace('.', '_', basename($file->filename, '.inc')).'_info';
+    $action_info = call_user_func($action_info_fn);
+    if (is_array($action_info)) $actions += $action_info;
   }
   return $actions;
 }
