@@ -822,8 +822,11 @@ function theme_views_bulk_operations_confirmation($nodes) {
  *   )
  */
 function _views_bulk_operations_get_operations($filter, $vid) {
-  $stored_operations = _views_bulk_operations_get($vid, array());
+  if (module_exists('actions')) {
+    views_bulk_operations_action_info(); // make sure our actions are loaded
+  }
 
+  $stored_operations = _views_bulk_operations_get($vid, array());
   switch ($filter) {
   case 'all':
     if (empty($store_operations)) return _views_bulk_operations_get_operations('refresh', $vid);
