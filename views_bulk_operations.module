@@ -28,8 +28,6 @@ define('VIEWS_BULK_OPS_MAX_CONFIRM_NODES', 10);
 // be usable. 0 is the safe setting.
 define('VIEWS_BULK_OPS_DEFAULT_OPERATION_ENABLE', 0);
 
-include_once(drupal_get_path('module', 'views_bulk_operations').'/taxonomy_actions.inc');
-
 /**
  * Implementation of hook_help().
  */
