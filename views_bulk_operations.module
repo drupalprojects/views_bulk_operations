@@ -64,14 +64,13 @@ function views_bulk_operations_menu($may_cache) {
       $path = 'admin/build/views/'.$view_name.'/operations';
     }
     else {
-      $urls = views_get_all_urls();
-      foreach ($urls as $key => $url) {
-        if ($url && strpos($_GET['q'], $url) !== FALSE) {
-          $view_name = $key;
-          break;
+      $urls = views_menu(false);
+      if ($urls) foreach ($urls as $url) {
+        if (strrpos($url['path'], '/view') !== FALSE) {
+          $view_name = $url['callback arguments'][0];
+          $path = substr($url['path'], 0, -strlen('/view')) .'/operations';
         }
       }
-      $path = $url.'/operations';
     }
     $view = views_get_view($view_name);
     if ($view && isset($view->page_type) && $view->page_type == 'bulk') {
