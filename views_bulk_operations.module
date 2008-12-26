@@ -65,10 +65,11 @@ function views_bulk_operations_menu($may_cache) {
     }
     else {
       $urls = views_menu(false);
+      $strlenview = strlen('/view');
       if ($urls) foreach ($urls as $url) {
-        if (strrpos($url['path'], '/view') !== FALSE) {
+        if (strrpos($url['path'], '/view') == strlen($url['path'])-$strlenview) {
           $view_name = $url['callback arguments'][0];
-          $path = substr($url['path'], 0, -strlen('/view')) .'/operations';
+          $path = substr($url['path'], 0, -$strlenview) .'/operations';
         }
       }
     }
