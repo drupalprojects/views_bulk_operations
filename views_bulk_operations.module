@@ -393,6 +393,7 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
     if ($operation['type'] == 'node') {
       $args = array_merge(array($nodes), $params);
       call_user_func_array($operation['callback'], $args);
+      cache_clear_all();
       drupal_set_message(t('Performed %action on nodes %nid.', array('%action' => $operation['label'], '%nid' => implode(', ', $nodes))));
     }
     else if ($operation['type'] == 'action') {
@@ -427,6 +428,7 @@ function _views_bulk_operations_action_process($operation, $node, $params) {
 function _views_bulk_operations_operation_process($operation, $node, $params) {
   $args = array_merge(array(array($node->nid)), $params);
   call_user_func_array($operation['callback'], $args);
+  cache_clear_all();
   drupal_set_message(t('Performed %action on node %title.', array('%action' => $operation['label'], '%title' => $node->title)));
 }
 
@@ -786,7 +788,7 @@ function theme_views_bulk_operations_confirmation($nodes) {
     }
     if (is_numeric($nid) && $nid > 0) {
       $node = node_load($nid);
-      $output .= '<li>'.$node->title.'</li>';
+      $output .= '<li>'. check_plain($node->title) .'</li>';
       $count++;
     }
   }
