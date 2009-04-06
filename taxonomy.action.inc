@@ -52,7 +52,6 @@ function taxonomy_action(&$node, $context) {
     }
     $terms = array_merge($terms, $existing_terms);
   }
-
   $node->taxonomy = $terms;
 }
 
