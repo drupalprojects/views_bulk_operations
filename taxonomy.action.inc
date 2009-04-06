@@ -57,21 +57,17 @@ function taxonomy_action(&$node, $context) {
 }
 
 function taxonomy_action_form($context) {
-  foreach (taxonomy_get_vocabularies() as $vid => $vocabulary) {
-    foreach (taxonomy_get_tree($vid) as $term) {
-      $terms[$term->tid] = $vocabulary->name.': '.$term->name;
-    }
+	$vocabs = taxonomy_get_vocabularies();
+	$form['taxonomy'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Vocabularies'),
+		'#tree' => true,
+	);	
+	while (list(,$vocab) = each($vocabs)) {
+		$form['taxonomy'][$vocab->vid] = taxonomy_form($vocab->vid);
+    $form['taxonomy'][$vocab->vid]['#weight'] = $vocab->weight;
   }
-  $form['terms'] = array(
-    '#type' => 'select',
-    '#title' => t('Terms'),
-    '#options' => $terms,
-    '#default_value' => NULL,
-    '#multiple' => TRUE,
-    '#size' => min(20, count($terms)),
-    '#description' => t('Choose the terms you want to associate with or delete from the nodes.'),
-		'#weight' => -5,
-  );
+
   $form['do'] = array(
     '#type' => 'radios',
     '#title' => t('Action to take'),
@@ -91,13 +87,33 @@ function taxonomy_action_form($context) {
 function taxonomy_action_submit($form_id, $form_values) {
   return array(
     'do' => $form_values['do'], 
-    'terms' => $form_values['terms'],
+    'terms' => taxonomy_action_parse_terms($form_values['taxonomy']),
   );
 }
 
+/**
+ * Take a multi-dimensional array of vocabularies -> selected terms and
+ * return an array of only the terms selected
+ */
+function taxonomy_action_parse_terms($taxonomy) {
+	$ret = array();
+	while (list(,$vocab) = each($taxonomy)) {
+		if (!is_array($vocab)) {
+		 	if (!empty($vocab)) $ret[] = $vocab;
+		} else {
+			while (list(,$tid) = each($vocab)) {
+				if (!empty($tid)) $ret[] = $tid;
+			}
+		}
+	}
+	return $ret;
+}
+
 function taxonomy_action_validate($form_id, $form_values) {
-  if ($form_values['do'] != TAXONOMY_ACTION_REPLACE && empty($form_values['terms'])) {
-    form_set_error('terms', t('You did not select any term nor did you choose to replace existing terms. Please select one or more terms or choose to replace the terms.'));
+	if ($form_values['do'] != TAXONOMY_ACTION_REPLACE) {
+		$terms = taxonomy_action_parse_terms($form_values['taxonomy']);
+		if(empty($terms))
+    	form_set_error('terms', t('You did not select any term nor did you choose to replace existing terms. Please select one or more terms or choose to replace the terms.'));
   }
 }
 
