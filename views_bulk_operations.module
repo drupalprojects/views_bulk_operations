@@ -382,56 +382,87 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
   variable_set('actions_max_stack', 10000000);
 
   if (module_exists('job_queue') && variable_get('vbo_queue_' . $form_values['vid'], 0)) { // Deferred execution
-    $function = $operation['type'] == 'action' ? '_views_bulk_operations_action_process' : '_views_bulk_operations_operation_process';
     foreach ($nodes as $nid) {
       $node = node_load($nid);
       if (!$node) continue;
-      job_queue_add($function, t('Perform %action on node %title.', array('%action' => $operation['label'], '%title' => $node->title)), array($operation, $node, $params));
+      global $user;
+      job_queue_add('_views_bulk_operations_queue_process', t('Perform %action on node %title.', array('%action' => $operation['label'], '%title' => $node->title)), 
+        array($operation, $node, $params, $user->uid)
+      );
     }
     drupal_set_message(t('Enqueued %action on nodes %nid. Check the <a href="@queue">queued jobs page</a>.', 
       array('%action' => $operation['label'], '%nid' => implode(', ', $nodes), '@queue' => url('admin/logs/job_queue'))));
   }
   else { // Direct execution
     if ($operation['type'] == 'node') {
-      $args = array_merge(array($nodes), $params);
-      call_user_func_array($operation['callback'], $args);
-      cache_clear_all();
-      drupal_set_message(t('Performed %action on nodes %nid.', array('%action' => $operation['label'], '%nid' => implode(', ', $nodes))));
+
+      // Add node_access() check.
+      foreach ($nodes as $i => $nid) {
+        $node = node_load(array('nid' => $nid));
+        if (!node_access('update', $node)) {
+          unset($nodes[$i]);
+          drupal_set_message(t('Skipped %action on node %title due to insufficient permissions.', array('%action' => $operation['label'], '%title' => $node->title)));
+        }
+      }
+      if (!empty($nodes)) {
+        $args = array_merge(array($nodes), $params);
+        call_user_func_array($operation['callback'], $args);
+        cache_clear_all();
+        drupal_set_message(t('Performed %action on nodes %nid.', array('%action' => $operation['label'], '%nid' => implode(', ', $nodes))));
+      }
     }
     else if ($operation['type'] == 'action') {
       foreach ($nodes as $nid) {
         $node = node_load($nid);
         if (!$node) continue;
+
+        // Add node_access() check.
+        if (!node_access('update', $node)) {
+          drupal_set_message(t('Skipped %action on node %title due to insufficient permissions.', array('%action' => $operation['label'], '%title' => $node->title)));
+          continue;
+        }
+
         _views_bulk_operations_action_do($operation, $node, $params);
         drupal_set_message(t('Performed %action on node %title.', array('%action' => $operation['label'], '%title' => $node->title)));
       }
     }
   }
 
-  variable_set('actions_max_stack', 35);
   drupal_goto($_GET['q'], drupal_query_string_encode($_GET, array('q')));
 }
 
 function views_bulk_operations_job_queue_functions() {
-  $functions['_views_bulk_operations_action_process'] = array(
-    'title' => t('Execute action'),
-  );
-  $functions['_views_bulk_operations_operation_process'] = array(
-    'title' => t('Execute node operation'),
+  $functions['_views_bulk_operations_queue_process'] = array(
+    'title' => t('Execute operation'),
   );
   return $functions;
 }
 
-function _views_bulk_operations_action_process($operation, $node, $params) {
-  _views_bulk_operations_action_do($operation, $node, $params);
-  drupal_set_message(t('Performed %action on node %title.', array('%action' => $operation['label'], '%title' => $node->title)));
-}
+function _views_bulk_operations_queue_process($operation, $node, $params, $uid) {
+  // Impersonate other user: http://drupal.org/node/218104
+  global $user;
+  $original_user = $user;
+  session_save_session(FALSE);
+  $user = user_load(array('uid' => $uid));
 
-function _views_bulk_operations_operation_process($operation, $node, $params) {
-  $args = array_merge(array(array($node->nid)), $params);
-  call_user_func_array($operation['callback'], $args);
-  cache_clear_all();
-  drupal_set_message(t('Performed %action on node %title.', array('%action' => $operation['label'], '%title' => $node->title)));
+  // Add node_access() check.
+  if (!node_access('update', $node)) {
+    drupal_set_message(t('Skipped %action on node %title due to insufficient permissions.', array('%action' => $operation['label'], '%title' => $node->title)));
+  }
+  else {
+    if ($operation['type'] == 'action') {
+      _views_bulk_operations_action_do($operation, $node, $params);
+    }
+    else {
+      $args = array_merge(array(array($node->nid)), $params);
+      call_user_func_array($operation['callback'], $args);
+      cache_clear_all();
+    }
+    drupal_set_message(t('Performed %action on node %title.', array('%action' => $operation['label'], '%title' => $node->title)));
+  }
+
+  $user = $original_user;
+  session_save_session(TRUE);
 }
 
 function _views_bulk_operations_action_form($action) {
