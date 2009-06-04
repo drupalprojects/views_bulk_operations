@@ -128,7 +128,7 @@ function _expand_views_node_selector($element){
 
   // Ummm unset the #options so that FAPI doesn't give me the "Illegal choice %choice in !name element" error.
   unset($element['#options']);
-  $element['select_all'] = array('#type' => 'hidden', '#value' => 0);
+  $element['select_all'] = array('#type' => 'hidden', '#default_value' => @$element['#value']['select_all']);
 
   return $element;
 }

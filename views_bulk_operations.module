@@ -108,13 +108,11 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
     drupal_set_message($error_message, 'error');
     drupal_goto($view->url.'/operations');
   }
-  /*
   elseif (count($enabled_operations) == 1) { // One op found: special case
     $form['#multistep'] = FALSE;
     $form['#redirect'] = FALSE;
     $step = VIEWS_BULK_OPS_STEP_SINGLE;
   }
-  */
   else { // Many ops found: calculate the next step
     $form['#multistep'] = TRUE;
     $step = isset($form_values) ? (int) $form_values['step'] + 1: VIEWS_BULK_OPS_STEP_VIEW;
