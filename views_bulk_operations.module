@@ -205,7 +205,7 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
         '#value' => $action,
       );
       $form['nodes'] = array(
-        '#type' => 'hidden',
+        '#type' => 'value',
         '#value' => serialize($form_values['nodes']),
       );
       $form_action = _views_bulk_operations_action_form($enabled_operations[$action]);
@@ -240,7 +240,7 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
         // If this action is configurable, we came from a VIEWS_BULK_OPS_STEP_CONFIG.
         // $form_values['nodes'] is already serialized.
         $form['nodes'] = array(
-          '#type' => 'hidden',
+          '#type' => 'value',
           '#value' => $form_values['nodes'],
         );
         // Gather the form values for the action form elements and preserve them
@@ -264,7 +264,7 @@ function views_bulk_operations_form($view, $nodes, $type, $form_values = NULL) {
         // If this action is not configurable, we skipped VIEWS_BULK_OPS_STEP_CONFIG.
         // $form_values['nodes'] still needs to be serialized.
         $form['nodes'] = array(
-          '#type' => 'hidden',
+          '#type' => 'value',
           '#value' => serialize($form_values['nodes']),
         );
         $selected = $form_values['nodes']; // We'll use that in the confirm_form
@@ -392,6 +392,8 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
       array('%action' => $operation['label'], '%nid' => implode(', ', $nodes), '@queue' => url('admin/logs/job_queue'))));
   }
   else { // Direct execution
+    set_time_limit(0);
+
     if ($operation['type'] == 'node') {
 
       // Add node_access() check.
@@ -411,7 +413,7 @@ function views_bulk_operations_form_submit($form_id, $form_values) {
     }
     else if ($operation['type'] == 'action') {
       foreach ($nodes as $nid) {
-        $node = node_load($nid);
+        $node = node_load(array('nid' => $nid));
         if (!$node) continue;
 
         // Add node_access() check.
