@@ -43,6 +43,30 @@ function views_bulk_operations_update_2() {
   return $ret;
 }
 
+// Convert vbo_settings from format used in 5.x-1.1 to that used in 5.x-1.2.
+function views_bulk_operations_update_3() {
+  $ret = array();
+  switch($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':  
+      $entries = db_query("SELECT * FROM {vbo_settings}");
+      $count = 0;
+      while ($entry = db_fetch_object($entries)) {
+        $new_ops = array();
+        $old_ops = unserialize($entry->value);
+        foreach ($old_ops as $op) {
+          $key = md5($op['callback'] . $op['label']);
+          $new_ops[$key] = $op;
+        }
+        db_query("UPDATE {vbo_settings} SET value = '%s' WHERE name = '%s'", serialize($new_ops), $entry->name);
+        $count++;   
+      }
+      break;
+  }
+  $ret[] = array('success' => true, 'query' => "Converted $count VBO settings.");  
+  return $ret;
+}
+
 function views_bulk_operations_uninstall() {
   db_query("DROP TABLE {vbo_settings}");
   db_query("DELETE FROM {variable} WHERE name LIKE 'vbo_queue_%'");
