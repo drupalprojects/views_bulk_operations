@@ -7,6 +7,7 @@ function views_bulk_operations_script_action_info() {
     'type' => 'system',
     'description' => t('Execute arbitrary PHP script'),
     'configurable' => TRUE,
+    'hooks' => array('any' => TRUE),
   ));
 }
 
