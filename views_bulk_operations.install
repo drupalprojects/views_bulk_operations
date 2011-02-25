@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 function views_bulk_operations_install() {
   switch ($GLOBALS['db_type']) {

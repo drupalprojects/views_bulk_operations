@@ -1,4 +1,3 @@
-; $Id$
 name = Views Bulk Operations
 description = Exposes new Views type 'Bulk Operations View' for selecting multiple nodes and applying operations on them.
 dependencies = views

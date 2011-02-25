@@ -1,4 +1,3 @@
-// $Id$
 
 Drupal.vboSelectAll = function() {
   var table = this;

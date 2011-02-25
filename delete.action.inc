@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 function delete_action_info() {
   return array('delete_action' => array(
