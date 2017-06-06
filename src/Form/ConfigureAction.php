@@ -7,7 +7,7 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Action\ActionManager;
-use Drupal\views_bulk_operations\VboBatch;
+use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
 
 /**
  * Action configuration form.
@@ -43,7 +43,7 @@ class ConfigureAction extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state, $view_id = NULL, $display_id = NULL) {
-    $tempstore_name = 'vbo_' . $view_id . '_' . $display_id;
+    $tempstore_name = 'views_bulk_operations_' . $view_id . '_' . $display_id;
     $tempstore = $this->tempStoreFactory->get($tempstore_name);
     $view_data = $tempstore->get($this->currentUser()->id());
     $view_data['tempstore_name'] = $tempstore_name;
@@ -89,7 +89,7 @@ class ConfigureAction extends FormBase {
       $view_data['configuration'] = $form_state->getValues();
     }
 
-    $batch = VboBatch::getBatch($view_data);
+    $batch = ViewsBulkOperationsBatch::getBatch($view_data);
 
     $this->tempStoreFactory->get($view_data['tempstore_name'])->delete($this->currentUser()->id());
 

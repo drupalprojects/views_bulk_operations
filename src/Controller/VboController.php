@@ -6,12 +6,12 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\user\PrivateTempStoreFactory;
-use Drupal\views_bulk_operations\VboBatch;
+use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
 
 /**
  * Defines VBO controller class.
  */
-class VboController extends ControllerBase implements ContainerInjectionInterface {
+class ViewsBulkOperationsController extends ControllerBase implements ContainerInjectionInterface {
 
   protected $tempStoreFactory;
 
@@ -35,12 +35,12 @@ class VboController extends ControllerBase implements ContainerInjectionInterfac
    * Batch builder function.
    */
   public function execute($view_id, $display_id) {
-    $tempstore_name = 'vbo_' . $view_id . '_' . $display_id;
+    $tempstore_name = 'views_bulk_operations_' . $view_id . '_' . $display_id;
 
     $tempstore = $this->tempStoreFactory->get($tempstore_name);
     $view_data = $tempstore->get($this->currentUser()->id());
 
-    $batch = VboBatch::getBatch($view_data);
+    $batch = ViewsBulkOperationsBatch::getBatch($view_data);
 
     $tempstore->delete($this->currentUser()->id());
 

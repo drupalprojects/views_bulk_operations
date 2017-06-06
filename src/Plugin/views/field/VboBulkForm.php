@@ -17,7 +17,7 @@ use Drupal\views\Plugin\views\style\Table;
 use Drupal\views\ResultRow;
 use Drupal\views\ViewExecutable;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\views_bulk_operations\Service\VboActionProcessor;
+use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
 use Drupal\Core\Action\ActionManager;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Session\AccountInterface;
@@ -26,9 +26,9 @@ use Drupal\Component\Utility\NestedArray;
 /**
  * Defines a actions-based bulk operation form element.
  *
- * @ViewsField("vbo_bulk_form")
+ * @ViewsField("views_bulk_operations_bulk_form")
  */
-class VboBulkForm extends FieldPluginBase implements CacheableDependencyInterface {
+class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDependencyInterface {
 
   use RedirectDestinationTrait;
   use UncacheableFieldHandlerTrait;
@@ -76,7 +76,7 @@ class VboBulkForm extends FieldPluginBase implements CacheableDependencyInterfac
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
    *   The language manager.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager, LanguageManagerInterface $language_manager, ActionManager $actionManager, VboActionProcessor $actionProcessor, PrivateTempStoreFactory $tempStoreFactory, AccountInterface $currentUser) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager, LanguageManagerInterface $language_manager, ActionManager $actionManager, ViewsBulkOperationsActionProcessor $actionProcessor, PrivateTempStoreFactory $tempStoreFactory, AccountInterface $currentUser) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
     $this->entityManager = $entity_manager;
@@ -98,7 +98,7 @@ class VboBulkForm extends FieldPluginBase implements CacheableDependencyInterfac
       $container->get('entity.manager'),
       $container->get('language_manager'),
       $container->get('plugin.manager.action'),
-      $container->get('vbo.processor'),
+      $container->get('views_bulk_operations.processor'),
       $container->get('user.private_tempstore'),
       $container->get('current_user')
     );
@@ -122,7 +122,7 @@ class VboBulkForm extends FieldPluginBase implements CacheableDependencyInterfac
     }
 
     // Initialize tempstore object.
-    $tempstore_name = 'vbo_' . $view->id() . '_' . $view->current_display;
+    $tempstore_name = 'views_bulk_operations_' . $view->id() . '_' . $view->current_display;
     $this->userTempStore = $this->tempStoreFactory->get($tempstore_name);
   }
 
@@ -450,7 +450,7 @@ class VboBulkForm extends FieldPluginBase implements CacheableDependencyInterfac
         ];
 
         // Add fancy select all library.
-        $form['#attached']['library'][] = 'vbo/vbo.selectAll';
+        $form['#attached']['library'][] = 'vbo/views_bulk_operations.selectAll';
       }
 
       // Duplicate the form actions into the action container in the header.
@@ -561,10 +561,10 @@ class VboBulkForm extends FieldPluginBase implements CacheableDependencyInterfac
         $data['batch_size'] = $this->options['batch_size'];
 
         if ($this->options['form_step'] && $configurable) {
-          $redirect_route = 'vbo.execute_configurable';
+          $redirect_route = 'views_bulk_operations.execute_configurable';
         }
         else {
-          $redirect_route = 'vbo.execute_batch';
+          $redirect_route = 'views_bulk_operations.execute_batch';
         }
 
         $this->userTempStore->set($this->currentUser->id(), $data);

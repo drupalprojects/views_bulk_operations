@@ -10,7 +10,7 @@ use Drupal\Core\Form\FormStateInterface;
  * Provides a base implementation for a configurable
  * and preconfigurable VBO Action plugin.
  */
-abstract class VboActionBase extends ConfigurableActionBase {
+abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase {
 
   /**
    * Action context.

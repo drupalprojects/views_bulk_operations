@@ -1,7 +1,7 @@
 views_bulk_operations.execute_batch:
   path: '/vbo-execute/{view_id}/{display_id}'
   defaults:
-    _controller: '\Drupal\views_bulk_operations\Controller\VboController::execute'
+    _controller: '\Drupal\views_bulk_operations\Controller\ViewsBulkOperationsController::execute'
     _title: 'Views Bulk Operations batch starter'
   requirements:
     _access: 'TRUE'

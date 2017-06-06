@@ -7,7 +7,7 @@ use Drupal\views\Views;
 /**
  * Defines module Batch API methods.
  */
-class VboBatch {
+class ViewsBulkOperationsBatch {
 
   /**
    * Translation function wrapper.
@@ -139,14 +139,14 @@ class VboBatch {
       'title' => static::t('Performing @operation on selected entities.', ['@operation' => $view_data['action_label']]),
       'operations' => [
         [
-          ['\Drupal\views_bulk_operations\VboBatch', 'operation'],
+          ['\Drupal\views_bulk_operations\ViewsBulkOperationsBatch', 'operation'],
           [
             $results,
             $view_data,
           ],
         ],
       ],
-      'finished' => ['\Drupal\views_bulk_operations\VboBatch', 'finished'],
+      'finished' => ['\Drupal\views_bulk_operations\ViewsBulkOperationsBatch', 'finished'],
     ];
   }
 
