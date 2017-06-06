@@ -1,0 +1,11 @@
+views_bulk_operations.selectAll:
+  version: 1.0
+  js:
+    library/selectAll.js: {}
+  css:
+    component:
+      library/selectAll.css: {}
+  dependencies:
+    - core/drupal
+    - core/jquery
+    - core/jquery.once

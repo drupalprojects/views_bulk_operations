@@ -1,0 +1,4 @@
+services:
+  views_bulk_operations.processor:
+    class: Drupal\views_bulk_operations\Service\VboActionProcessor
+    arguments: ['@entity_type.manager', '@plugin.manager.action']

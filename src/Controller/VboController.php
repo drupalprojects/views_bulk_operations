@@ -1,0 +1,51 @@
+<?php
+
+namespace Drupal\views_bulk_operations\Controller;
+
+use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\user\PrivateTempStoreFactory;
+use Drupal\views_bulk_operations\VboBatch;
+
+/**
+ * Defines VBO controller class.
+ */
+class VboController extends ControllerBase implements ContainerInjectionInterface {
+
+  protected $tempStoreFactory;
+
+  /**
+   * Constructs a new controller object.
+   */
+  public function __construct(PrivateTempStoreFactory $tempStoreFactory) {
+    $this->tempStoreFactory = $tempStoreFactory;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('user.private_tempstore')
+    );
+  }
+
+  /**
+   * Batch builder function.
+   */
+  public function execute($view_id, $display_id) {
+    $tempstore_name = 'vbo_' . $view_id . '_' . $display_id;
+
+    $tempstore = $this->tempStoreFactory->get($tempstore_name);
+    $view_data = $tempstore->get($this->currentUser()->id());
+
+    $batch = VboBatch::getBatch($view_data);
+
+    $tempstore->delete($this->currentUser()->id());
+
+    batch_set($batch);
+    return batch_process($_GET['destination']);
+  }
+
+}
