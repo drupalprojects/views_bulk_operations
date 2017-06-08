@@ -27,6 +27,7 @@ use Drupal\Component\Utility\NestedArray;
  * Defines a actions-based bulk operation form element.
  *
  * @ViewsField("views_bulk_operations_bulk_form")
+ * @class
  */
 class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDependencyInterface {
 
@@ -184,7 +185,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $options = parent::defineOptions();
     $options['batch'] = ['default' => TRUE];
     $options['batch_size'] = ['default' => 10];
-    $options['form_step'] = ['default' => FALSE];
+    $options['form_step'] = ['default' => TRUE];
     $options['action_title'] = ['default' => $this->t('Action')];
     $options['include_exclude'] = ['default' => 'exclude'];
     $options['selected_actions'] = ['default' => []];
@@ -228,8 +229,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       '#type' => 'radios',
       '#title' => $this->t('Available actions'),
       '#options' => [
-        'exclude' => $this->t('All actions, except selected'),
         'include' => $this->t('Only selected actions'),
+        'exclude' => $this->t('All actions, except selected'),
       ],
       '#default_value' => $this->options['include_exclude'],
     ];
@@ -286,6 +287,9 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
               '#title' => $this->t('Action preconfiguration'),
               '#open' => TRUE,
             ];
+          }
+          if (!isset($preconfiguration[$id])) {
+            $preconfiguration[$id] = [];
           }
           $form['selected_actions'][$id]['preconfiguration'] = $actionObject->buildPreConfigurationForm($form['selected_actions'][$id]['preconfiguration'], $preconfiguration[$id], $form_state);
         }
