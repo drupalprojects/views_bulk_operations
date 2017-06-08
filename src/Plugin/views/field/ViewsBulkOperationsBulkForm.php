@@ -454,7 +454,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         ];
 
         // Add fancy select all library.
-        $form['#attached']['library'][] = 'vbo/views_bulk_operations.selectAll';
+        $form['#attached']['library'][] = 'views_bulk_operations/views_bulk_operations.selectAll';
       }
 
       // Duplicate the form actions into the action container in the header.
