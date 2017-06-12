@@ -3,6 +3,7 @@
 namespace Drupal\views_bulk_operations\Action;
 
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Action\ConfigurableActionBase;
 
 /**
  * Views Bulk Operations action plugin base.
@@ -10,7 +11,7 @@ use Drupal\Core\Form\FormStateInterface;
  * Provides a base implementation for a configurable
  * and preconfigurable VBO Action plugin.
  */
-abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase {
+abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase implements ViewsBulkOperationsActionInterface {
 
   /**
    * Action context.
@@ -21,10 +22,7 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase {
   protected $context;
 
   /**
-   * Set context.
-   *
-   * @param array $context
-   *   The context array.
+   * {@inheritdoc}
    */
   public function setContext(array $context) {
     foreach ($context as $key => $item) {
@@ -33,33 +31,21 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase {
   }
 
   /**
-   * Build preconfigure action form elements.
-   *
-   * @param array $element
-   *   Element of the views API form where configuration resides.
-   * @param array $values
-   *   Current values of the plugin pre-configuration.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   Form state interface object.
-   *
-   * @return array
-   *   The action configuration form element.
+   * {@inheritdoc}
+   */
+  public static function vboConfiguration() {
+    return [];
+  }
+
+  /**
+   * {@inheritdoc}
    */
   public function buildPreConfigurationForm(array $element, array $values, FormStateInterface $form_state) {
     return $element;
   }
 
   /**
-   * Execute action on multiple entities.
-   *
-   * Can return an array of results of processing, if no return value
-   * is provided, action label will be used for each result.
-   *
-   * @param array $objects
-   *   An array of entities.
-   *
-   * @return array
-   *   An array of translatable markup objects or strings (optional)
+   * {@inheritdoc}
    */
   public function executeMultiple(array $objects) {
     $results = [];

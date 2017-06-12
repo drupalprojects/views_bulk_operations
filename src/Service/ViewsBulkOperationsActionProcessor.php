@@ -49,7 +49,6 @@ class ViewsBulkOperationsActionProcessor {
 
     // Set action context.
     $this->setActionContext($view_data);
-    $this->action->context = $view_data;
 
     // Set-up action processor.
     $this->entityType = $view_data['entity_type'];

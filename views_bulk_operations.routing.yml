@@ -12,3 +12,10 @@ views_bulk_operations.execute_configurable:
     _title: 'Views Bulk Operations configure step'
   requirements:
     _access: 'TRUE'
+views_bulk_operations.confirm:
+  path: '/views-bulk-operations/confirm/{view_id}/{display_id}'
+  defaults:
+    _form: '\Drupal\views_bulk_operations\Form\ConfirmAction'
+    _title: 'Views Bulk Operations confirm execution'
+  requirements:
+    _access: 'TRUE'

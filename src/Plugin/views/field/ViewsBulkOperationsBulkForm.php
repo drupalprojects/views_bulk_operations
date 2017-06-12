@@ -18,7 +18,7 @@ use Drupal\views\ResultRow;
 use Drupal\views\ViewExecutable;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
-use Drupal\Core\Action\ActionManager;
+use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Component\Utility\NestedArray;
@@ -77,7 +77,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
    *   The language manager.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager, LanguageManagerInterface $language_manager, ActionManager $actionManager, ViewsBulkOperationsActionProcessor $actionProcessor, PrivateTempStoreFactory $tempStoreFactory, AccountInterface $currentUser) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager, LanguageManagerInterface $language_manager, ViewsBulkOperationsActionManager $actionManager, ViewsBulkOperationsActionProcessor $actionProcessor, PrivateTempStoreFactory $tempStoreFactory, AccountInterface $currentUser) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
     $this->entityManager = $entity_manager;
@@ -98,7 +98,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       $plugin_definition,
       $container->get('entity.manager'),
       $container->get('language_manager'),
-      $container->get('plugin.manager.action'),
+      $container->get('plugin.manager.views_bulk_operations_action'),
       $container->get('views_bulk_operations.processor'),
       $container->get('user.private_tempstore'),
       $container->get('current_user')
@@ -276,6 +276,12 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
             'wrapper' => $wrapper_id,
           ],
         ];
+        // Without this there are problems when entering configuration
+        // value for the first time. TODO: investigate further.
+        $form['selected_actions'][$id]['preconfiguration'] = [
+          '#type' => 'value',
+          '#value' => NULL,
+        ];
 
         if (!empty($selected_actions[$id])) {
           // Load preconfiguration form.
@@ -312,18 +318,16 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   public function submitOptionsForm(&$form, FormStateInterface $form_state) {
     $options = &$form_state->getValue('options');
     foreach ($options['selected_actions'] as $id => $action) {
-      if (isset($action['preconfiguration'])) {
-        $options['preconfiguration'][$id] = $action['preconfiguration'];
-        unset($options['selected_actions'][$id]['preconfiguration']);
+      if (!empty($action['state'])) {
+        if (isset($action['preconfiguration'])) {
+          $options['preconfiguration'][$id] = $action['preconfiguration'];
+          unset($options['selected_actions'][$id]['preconfiguration']);
+        }
         $options['selected_actions'][$id] = $id;
       }
       else {
-        if (!empty($action['state'])) {
-          $options['selected_actions'][$id] = $id;
-        }
-        else {
-          $options['selected_actions'][$id] = 0;
-        }
+        unset($options['preconfiguration'][$id]);
+        $options['selected_actions'][$id] = 0;
       }
     }
     parent::submitOptionsForm($form, $form_state);
@@ -543,6 +547,13 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         }
       }
 
+      // Confirm form support.
+      if (!empty($action['confirm'])) {
+        if (empty($action['confirm_form_route_name'])) {
+          $action['confirm_form_route_name'] = 'views_bulk_operations.confirm';
+        }
+      }
+
       $configurable = $this->isConfigurable($action);
 
       if (!$this->options['form_step'] && $configurable) {
@@ -563,9 +574,13 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           $data['exposed_input'] = $this->view->getExposedInput();
         }
         $data['batch_size'] = $this->options['batch_size'];
+        $data['redirect_uri'] = $this->getDestinationArray();
 
         if ($this->options['form_step'] && $configurable) {
           $redirect_route = 'views_bulk_operations.execute_configurable';
+        }
+        elseif (!empty($action['confirm_form_route_name'])) {
+          $redirect_route = $action['confirm_form_route_name'];
         }
         else {
           $redirect_route = 'views_bulk_operations.execute_batch';
@@ -576,37 +591,39 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         $form_state->setRedirect($redirect_route, [
           'view_id' => $this->view->id(),
           'display_id' => $this->view->current_display,
-        ], [
-          'query' => $this->getDestinationArray(),
         ]);
       }
       else {
-        $count = 0;
-        $this->actionProcessor->initialize($data);
-        $entities = [];
-        if ($form_state->getValue('select_all')) {
-          $this->view->query->setLimit(0);
-          $this->view->query->setOffset(0);
-          $this->view->query->execute($this->view);
-
-          foreach ($this->view->result as $delta => $row) {
-            $entities[] = $row->_entity;
-          }
-        }
-        else {
-          foreach ($data['list'] as $item) {
-            $entities[] = $actionProcessor->getEntity($item);
-          }
-        }
-        $this->actionProcessor->process($entities);
-
         if (!empty($action['confirm_form_route_name'])) {
-          $options = [
+          $this->userTempStore->set($this->currentUser->id(), $data);
+          $form_state->setRedirect($action['confirm_form_route_name'], [
+            'view_id' => $this->view->id(),
+            'display_id' => $this->view->current_display,
+          ], [
             'query' => $this->getDestinationArray(),
-          ];
-          $form_state->setRedirect($action['confirm_form_route_name'], [], $options);
+          ]);
+          return;
         }
         else {
+          $count = 0;
+          $this->actionProcessor->initialize($data);
+          $entities = [];
+          if ($form_state->getValue('select_all')) {
+            $this->view->query->setLimit(0);
+            $this->view->query->setOffset(0);
+            $this->view->query->execute($this->view);
+
+            foreach ($this->view->result as $delta => $row) {
+              $entities[] = $row->_entity;
+            }
+          }
+          else {
+            foreach ($data['list'] as $item) {
+              $entities[] = $actionProcessor->getEntity($item);
+            }
+          }
+          $this->actionProcessor->process($entities);
+
           $count = count($entities);
           if ($count) {
             drupal_set_message($this->formatPlural($count, '%action was applied to @count item.', '%action was applied to @count items.', [
@@ -614,6 +631,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
             ]));
           }
         }
+
       }
     }
   }

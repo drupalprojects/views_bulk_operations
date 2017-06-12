@@ -6,18 +6,22 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\user\PrivateTempStoreFactory;
-use Drupal\Core\Action\ActionManager;
+use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
 use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
+use Drupal\Core\Routing\RedirectDestinationTrait;
+use Drupal\Core\Url;
 
 /**
  * Action configuration form.
  */
 class ConfigureAction extends FormBase {
 
+  use RedirectDestinationTrait;
+
   /**
    * Constructor.
    */
-  public function __construct(PrivateTempStoreFactory $tempStoreFactory, ActionManager $actionManager) {
+  public function __construct(PrivateTempStoreFactory $tempStoreFactory, ViewsBulkOperationsActionManager $actionManager) {
     $this->tempStoreFactory = $tempStoreFactory;
     $this->actionManager = $actionManager;
   }
@@ -28,7 +32,7 @@ class ConfigureAction extends FormBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('user.private_tempstore'),
-      $container->get('plugin.manager.action')
+      $container->get('plugin.manager.views_bulk_operations_action')
     );
   }
 
@@ -89,11 +93,32 @@ class ConfigureAction extends FormBase {
       $view_data['configuration'] = $form_state->getValues();
     }
 
-    $batch = ViewsBulkOperationsBatch::getBatch($view_data);
+    $definition = $this->actionManager->getDefinition($view_data['action_id']);
+    if (!empty($definition['confirm'])) {
+      if (empty($definition['confirm_form_route_name'])) {
+        $definition['confirm_form_route_name'] = 'views_bulk_operations.confirm';
+      }
+    }
 
-    $this->tempStoreFactory->get($view_data['tempstore_name'])->delete($this->currentUser()->id());
+    if (!empty($definition['confirm_form_route_name'])) {
+      // Go to the confirm route.
+      $this->tempStoreFactory->get($view_data['tempstore_name'])->set($this->currentUser()->id(), $view_data);
+      $form_state->setRedirect($definition['confirm_form_route_name'], [
+        'view_id' => $view_data['view_id'],
+        'display_id' => $view_data['display_id'],
+      ], [
+        'query' => $view_data['redirect_uri'],
+      ]);
+    }
+    else {
+      // Execute batch process.
+      $batch = ViewsBulkOperationsBatch::getBatch($view_data);
+      $form_state->setRedirectUrl(Url::fromUserInput($view_data['redirect_uri']['destination']));
 
-    batch_set($batch);
+      $this->tempStoreFactory->get($view_data['tempstore_name'])->delete($this->currentUser()->id());
+
+      batch_set($batch);
+    }
   }
 
 }
