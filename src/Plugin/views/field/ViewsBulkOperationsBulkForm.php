@@ -619,7 +619,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           }
           else {
             foreach ($data['list'] as $item) {
-              $entities[] = $actionProcessor->getEntity($item);
+              $entities[] = $this->actionProcessor->getEntity($item);
             }
           }
           $this->actionProcessor->process($entities);
@@ -627,7 +627,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           $count = count($entities);
           if ($count) {
             drupal_set_message($this->formatPlural($count, '%action was applied to @count item.', '%action was applied to @count items.', [
-              '%action' => $action->label(),
+              '%action' => $action['label'],
             ]));
           }
         }
