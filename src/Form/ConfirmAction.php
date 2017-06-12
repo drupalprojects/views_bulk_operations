@@ -72,6 +72,7 @@ class ConfirmAction extends FormBase {
       if (!empty($view_data['exposed_input'])) {
         $view->setExposedInput($view_data['exposed_input']);
       }
+      $view->build();
       $count = $view->query->query()->countQuery()->execute()->fetchField();
     }
 

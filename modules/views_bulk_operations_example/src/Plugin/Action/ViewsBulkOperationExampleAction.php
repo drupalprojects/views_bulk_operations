@@ -51,7 +51,7 @@ class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase {
   public static function vboConfiguration() {
     return [
       // Use default confirmation form.
-      'confirm' => FALSE,
+      'confirm' => TRUE,
       // Pass result rows to the $context property.
       'pass_rows' => TRUE,
     ];
