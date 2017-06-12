@@ -45,7 +45,7 @@ class ViewsBulkOperationsController extends ControllerBase implements ContainerI
     $tempstore->delete($this->currentUser()->id());
 
     batch_set($batch);
-    return batch_process($_GET['destination']);
+    return batch_process($view_data['redirect_uri']['destination']);
   }
 
 }

@@ -38,6 +38,8 @@ class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase {
    * {@inheritdoc}
    */
   public function execute($entity = NULL) {
+    // All config resides in $this->configuration.
+    // Passed view rows will be available in $this->context.
     // Do some processing..
     // ...
     return 'Example action';
