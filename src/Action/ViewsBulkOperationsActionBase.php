@@ -33,13 +33,6 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase impl
   /**
    * {@inheritdoc}
    */
-  public static function vboConfiguration() {
-    return [];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function buildPreConfigurationForm(array $element, array $values, FormStateInterface $form_state) {
     return $element;
   }

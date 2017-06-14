@@ -36,17 +36,11 @@ class ViewsBulkOperationsActionManager extends ActionManager {
    *   The plugin definition.
    */
   protected function extendDefinition(array &$definition) {
-    if (in_array('Drupal\views_bulk_operations\Action\ViewsBulkOperationsActionInterface', class_implements($definition['class']), TRUE)) {
-      $extra = $definition['class']::vboConfiguration();
-      // Merge in defaults.
-      $extra += [
-        'confirm' => FALSE,
-        'pass_rows' => FALSE,
-      ];
-      foreach ($extra as $key => $value) {
-        $definition[$key] = $value;
-      }
-    }
+    // Merge in defaults.
+    $definition += [
+      'confirm' => FALSE,
+      'pass_rows' => FALSE,
+    ];
   }
 
 }

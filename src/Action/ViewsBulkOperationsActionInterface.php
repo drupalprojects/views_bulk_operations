@@ -18,16 +18,6 @@ interface ViewsBulkOperationsActionInterface {
   public function setContext(array $context);
 
   /**
-   * Add additional action configuration.
-   *
-   * To avoid reinventing core action plugin and
-   * defining more annotations, we'll use a static
-   * method to add additional VBO-specific
-   * configuration to an action.
-   */
-  public static function vboConfiguration();
-
-  /**
    * Build preconfigure action form elements.
    *
    * @param array $element

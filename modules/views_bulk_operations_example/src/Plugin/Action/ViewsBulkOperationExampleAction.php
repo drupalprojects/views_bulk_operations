@@ -9,10 +9,18 @@ use Drupal\Core\Session\AccountInterface;
 /**
  * Unpublishes a node containing certain keywords.
  *
+ * There are 2 additional parameters in annotation:
+ *   - confirm: should a confirm route be used?
+ *   (if confirm route is not provided, the VBO default
+ *   confirm form will be used),
+ *   - pass_rows: should view rows be passed to the action context?
+ *
  * @Action(
  *   id = "views_bulk_operations_example",
  *   label = @Translation("VBO example action"),
- *   type = ""
+ *   type = "",
+ *   confirm = TRUE,
+ *   pass_rows = TRUE
  * )
  */
 class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase {
@@ -43,18 +51,6 @@ class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase {
     // Do some processing..
     // ...
     return 'Example action';
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function vboConfiguration() {
-    return [
-      // Use default confirmation form.
-      'confirm' => TRUE,
-      // Pass result rows to the $context property.
-      'pass_rows' => TRUE,
-    ];
   }
 
   /**
