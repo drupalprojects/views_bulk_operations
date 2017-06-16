@@ -16,6 +16,9 @@ use Drupal\Core\Session\AccountInterface;
  *   the default confirm form route are always processed using batching,
  *   - pass_rows: should view rows be passed to the action context?
  *
+ * If type is left empty, action will be possible for all
+ * entity types.
+ *
  * @Action(
  *   id = "views_bulk_operations_example",
  *   label = @Translation("VBO example action"),
