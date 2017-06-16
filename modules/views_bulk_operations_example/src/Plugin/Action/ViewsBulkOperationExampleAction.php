@@ -11,8 +11,9 @@ use Drupal\Core\Session\AccountInterface;
  *
  * There are 2 additional parameters in annotation:
  *   - confirm: should a confirm route be used?
- *   (if confirm route is not provided, the VBO default
- *   confirm form will be used),
+ *   (if confirm_form_route_name parameter is not provided or empty,
+ *   the VBO default confirm form will be used), actions with
+ *   the default confirm form route are always processed using batching,
  *   - pass_rows: should view rows be passed to the action context?
  *
  * @Action(
@@ -20,6 +21,7 @@ use Drupal\Core\Session\AccountInterface;
  *   label = @Translation("VBO example action"),
  *   type = "",
  *   confirm = TRUE,
+ *   confirm_form_route_name = "",
  *   pass_rows = TRUE
  * )
  */

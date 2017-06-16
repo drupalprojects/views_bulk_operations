@@ -547,13 +547,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         }
       }
 
-      // Confirm form support.
-      if (!empty($action['confirm'])) {
-        if (empty($action['confirm_form_route_name'])) {
-          $action['confirm_form_route_name'] = 'views_bulk_operations.confirm';
-        }
-      }
-
       $configurable = $this->isConfigurable($action);
 
       if (!$this->options['form_step'] && $configurable) {

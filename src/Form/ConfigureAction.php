@@ -94,12 +94,6 @@ class ConfigureAction extends FormBase {
     }
 
     $definition = $this->actionManager->getDefinition($view_data['action_id']);
-    if (!empty($definition['confirm'])) {
-      if (empty($definition['confirm_form_route_name'])) {
-        $definition['confirm_form_route_name'] = 'views_bulk_operations.confirm';
-      }
-    }
-
     if (!empty($definition['confirm_form_route_name'])) {
       // Go to the confirm route.
       $this->tempStoreFactory->get($view_data['tempstore_name'])->set($this->currentUser()->id(), $view_data);

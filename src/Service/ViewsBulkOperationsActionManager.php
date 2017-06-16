@@ -41,6 +41,12 @@ class ViewsBulkOperationsActionManager extends ActionManager {
       'confirm' => FALSE,
       'pass_rows' => FALSE,
     ];
+
+    // Add default confirmation form if confirm set to TRUE
+    // and not explicitly set.
+    if ($definition['confirm'] && empty($definition['confirm_form_route_name'])) {
+      $definition['confirm_form_route_name'] = 'views_bulk_operations.confirm';
+    }
   }
 
 }
