@@ -25,8 +25,8 @@ Creating custom actions
 Example that covers all possibilities available in
 modules/views_bulk_operatios_example/.
 
-In a module, create an action plugin (check example module
-  or \core\modules\node\src\Plugin\Action\AssignOwnerNode.php).
+In a module, create an action plugin (check the example module
+or \core\modules\node\src\Plugin\Action\ for simple implementations).
 
 Available annotation parameters:
   - id: The action ID (required),
@@ -38,9 +38,11 @@ Available annotation parameters:
   - confirm_form_route_name: Route name of the action confirmation form.
     If left empty and the previous parameter is empty, there will be
     no confirmation step.
-  - pass_rows: If set to TRUE, selected view rows will be passed to
-    The action object context parameter. Not implemented yet, see
-    https://www.drupal.org/node/2884847 for more information.
+  - pass_context: If set to TRUE, the entire batch context 
+    will be added to the action $context parameter.
+  - pass_view: If set to TRUE, the entire view with selected
+    results ($view->result) of the current batch will be available
+    in the action $view parameter.
 
 
 Additional notes
