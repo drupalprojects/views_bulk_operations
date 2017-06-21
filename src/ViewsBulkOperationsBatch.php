@@ -63,20 +63,11 @@ class ViewsBulkOperationsBatch {
       $operations = array_count_values($results);
       $details = [];
       foreach ($operations as $op => $count) {
-        $details[] = $op . ': ' . $count;
+        $details[] = $op . ' (' . $count . ')';
       }
-      if (count($details) === 1) {
-        $keys = array_keys($operations);
-        $message = static::t('@operation operation performed on @count results.', [
-          '@operation' => $keys[0],
-          '@count' => $nres,
-        ]);
-      }
-      else {
-        $message = static::t('Operations performed: @operations.', [
-          '@operations' => implode(', ', $details),
-        ]);
-      }
+      $message = static::t('Action processing results: @operations.', [
+        '@operations' => implode(', ', $details),
+      ]);
       static::message($message);
     }
     else {

@@ -5,15 +5,21 @@ namespace Drupal\views_bulk_operations\Service;
 use Drupal\Core\TypedData\TranslatableInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\views\Views;
+use Drupal\Core\Session\AccountProxyInterface;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
 
 /**
  * Defines VBO action processor.
  */
 class ViewsBulkOperationsActionProcessor {
 
+  use StringTranslationTrait;
+
   protected $entityTypeManager;
 
   protected $actionManager;
+
+  protected $user;
 
   protected $actionDefinition;
 
@@ -30,9 +36,10 @@ class ViewsBulkOperationsActionProcessor {
   /**
    * Constructor.
    */
-  public function __construct(EntityTypeManagerInterface $entityTypeManager, ViewsBulkOperationsActionManager $actionManager) {
+  public function __construct(EntityTypeManagerInterface $entityTypeManager, ViewsBulkOperationsActionManager $actionManager, AccountProxyInterface $user) {
     $this->entityTypeManager = $entityTypeManager;
     $this->actionManager = $actionManager;
+    $this->user = $user;
   }
 
   /**
@@ -172,15 +179,30 @@ class ViewsBulkOperationsActionProcessor {
    * Process result.
    */
   public function process() {
-    $result = $this->action->executeMultiple($this->queue);
-    if (empty($result)) {
+    $output = [];
+
+    // Check access.
+    foreach ($this->queue as $delta => $entity) {
+      if (!$this->action->access($entity, $this->user)) {
+        $output[] = $this->t('Access denied');
+        unset($this->queue[$delta]);
+      }
+    }
+
+    // Process queue.
+    $results = $this->action->executeMultiple($this->queue);
+
+    // Populate output.
+    if (empty($results)) {
       $count = count($this->queue);
       for ($i = 0; $i < $count; $i++) {
         $output[] = $this->actionDefinition['label'];
       }
     }
     else {
-      $output = $result;
+      foreach ($results as $result) {
+        $output[] = $result;
+      }
     }
     return $output;
   }

@@ -1,7 +1,7 @@
 services:
   views_bulk_operations.processor:
     class: Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor
-    arguments: ['@entity_type.manager', '@plugin.manager.views_bulk_operations_action']
+    arguments: ['@entity_type.manager', '@plugin.manager.views_bulk_operations_action', '@current_user']
   plugin.manager.views_bulk_operations_action:
     class: Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager
     arguments: ['@container.namespaces', '@cache.discovery', '@module_handler']

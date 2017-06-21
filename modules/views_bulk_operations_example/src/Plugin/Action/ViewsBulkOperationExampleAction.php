@@ -23,7 +23,7 @@ use Drupal\Core\Session\AccountInterface;
  *   id = "views_bulk_operations_example",
  *   label = @Translation("VBO example action"),
  *   type = "",
- *   confirm = FALSE,
+ *   confirm = TRUE,
  *   confirm_form_route_name = "",
  *   pass_context = TRUE,
  *   pass_view = TRUE
@@ -91,9 +91,9 @@ class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase {
    * {@inheritdoc}
    */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
-    // This is not required here, when thi method doesn't exist,
-    // Form values are assigned to the action configuration by default.
-    // This function is a must when result processing is needed.
+    // This is not required here, when this method doesn't exist,
+    // form values are assigned to the action configuration by default.
+    // This function is a must only when user input processing is needed.
     $this->configuration['example_config_setting'] = $form_state->getValue('example_config_setting');
   }
 
