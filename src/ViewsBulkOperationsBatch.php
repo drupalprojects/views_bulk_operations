@@ -2,8 +2,6 @@
 
 namespace Drupal\views_bulk_operations;
 
-use Drupal\views\Views;
-
 /**
  * Defines module Batch API methods.
  */
@@ -34,53 +32,12 @@ class ViewsBulkOperationsBatch {
     }
 
     // Get entities to process.
-    $batch_size = empty($data['batch_size']) ? 10 : $data['batch_size'];
     $actionProcessor = \Drupal::service('views_bulk_operations.processor');
     $actionProcessor->initialize($data);
-    $entities = [];
-
-    if (empty($list)) {
-
-      // Load results from view if list is not provided.
-      if (!isset($context['sandbox']['offset'])) {
-        $context['sandbox']['offset'] = 0;
-      }
-
-      $view = Views::getView($data['view_id']);
-      $view->setDisplay($data['display_id']);
-      if (!empty($data['arguments'])) {
-        $view->setArguments($data['arguments']);
-      }
-      if (!empty($data['exposed_input'])) {
-        $view->setExposedInput($data['exposed_input']);
-      }
-      $view->setItemsPerPage($batch_size);
-      $view->setOffset($context['sandbox']['offset']);
-      $view->usePager();
-      $view->execute();
-
-      foreach ($view->result as $delta => $row) {
-        $entities[] = $actionProcessor->getEntityTranslation($row);
-      }
-      $context['sandbox']['offset'] += $batch_size;
-
-      if (!isset($context['sandbox']['total'])) {
-        $context['sandbox']['total'] = $view->query->query()->countQuery()->execute()->fetchField();
-      }
-    }
-    else {
-      $list = array_slice($list, $context['sandbox']['processed'], $batch_size);
-      foreach ($list as $item) {
-        $entities[] = $actionProcessor->getEntity($item);
-      }
-      if (!isset($context['sandbox']['total'])) {
-        $context['sandbox']['total'] = count($list);
-      }
-    }
 
     // Do the processing.
-    if (!empty($entities)) {
-      $batch_results = $actionProcessor->process($entities);
+    if ($count = $actionProcessor->populateQueue($list, $data, $context)) {
+      $batch_results = $actionProcessor->process();
       if (!empty($batch_results)) {
         // Convert translatable markup to strings in order to allow
         // correct operation of array_count_values function.
@@ -88,7 +45,7 @@ class ViewsBulkOperationsBatch {
           $context['results'][] = (string) $result;
         }
       }
-      $context['sandbox']['processed'] += count($entities);
+      $context['sandbox']['processed'] += $count;
       $context['finished'] = $context['sandbox']['processed'] / $context['sandbox']['total'];
       $context['message'] = static::t('Processed @count of @total entities.', [
         '@count' => $context['sandbox']['processed'],

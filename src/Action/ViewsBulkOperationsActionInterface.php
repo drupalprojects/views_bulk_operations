@@ -3,6 +3,7 @@
 namespace Drupal\views_bulk_operations\Action;
 
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\views\ViewExecutable;
 
 /**
  * Defines Views Bulk Operations action interface.
@@ -10,12 +11,25 @@ use Drupal\Core\Form\FormStateInterface;
 interface ViewsBulkOperationsActionInterface {
 
   /**
-   * Set context.
+   * Set action context.
+   *
+   * Implementation should have an option to add data to the
+   * context, not overwrite it on every method execution.
    *
    * @param array $context
    *   The context array.
+   *
+   * @see ViewsBulkOperationsActionBase::setContext
    */
   public function setContext(array $context);
+
+  /**
+   * Set view object.
+   *
+   * @param \Drupal\views\ViewExecutable $view
+   *   The processed view.
+   */
+  public function setView(ViewExecutable $view);
 
   /**
    * Build preconfigure action form elements.

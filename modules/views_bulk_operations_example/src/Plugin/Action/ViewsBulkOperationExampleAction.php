@@ -7,7 +7,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
 
 /**
- * Unpublishes a node containing certain keywords.
+ * An example action covering all possible options.
  *
  * There are 2 additional parameters in annotation:
  *   - confirm: should a confirm route be used?
@@ -23,17 +23,13 @@ use Drupal\Core\Session\AccountInterface;
  *   id = "views_bulk_operations_example",
  *   label = @Translation("VBO example action"),
  *   type = "",
- *   confirm = TRUE,
+ *   confirm = FALSE,
  *   confirm_form_route_name = "",
- *   pass_rows = TRUE
+ *   pass_context = TRUE,
+ *   pass_view = TRUE
  * )
  */
 class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase {
-
-  /**
-   * {@inheritdoc}
-   */
-  protected $context;
 
   /**
    * {@inheritdoc}
@@ -51,11 +47,20 @@ class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase {
    * {@inheritdoc}
    */
   public function execute($entity = NULL) {
-    // All config resides in $this->configuration.
-    // Passed view rows will be available in $this->context.
+    /*
+     * All config resides in $this->configuration.
+     * Passed view rows will be available in $this->context.
+     * Data about the view used to select results and optionally
+     * the batch context are available in $this->context or externally
+     * through the public getContext() method.
+     * The entire ViewExecutable object  with selected result
+     * rows is available in $this->view or externally through
+     * the public getView() method.
+     */
+
     // Do some processing..
     // ...
-    return 'Example action';
+    return sprintf('Example action (configuration: %s)', print_r($this->configuration, TRUE));
   }
 
   /**

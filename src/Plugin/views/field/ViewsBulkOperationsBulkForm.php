@@ -549,35 +549,30 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       $configurable = $this->isConfigurable($action);
 
-      if (!$this->options['form_step'] && $configurable) {
-        $actionObject = $this->actionManager->createInstance($action_id);
-        if (method_exists($actionObject, 'submitConfigurationForm')) {
-          $actionObject->submitConfigurationForm($form, $form_state);
-          $data['configuration'] = $actionObject->getConfiguration();
+      // Routing - determine redirect route.
+      if ($this->options['form_step'] && $configurable) {
+        $redirect_route = 'views_bulk_operations.execute_configurable';
+      }
+      elseif ($this->options['batch']) {
+        if (!empty($action['confirm_form_route_name'])) {
+          $redirect_route = $action['confirm_form_route_name'];
         }
         else {
-          $form_state->cleanValues();
-          $data['configuration'] = $form_state->getValues();
+          $redirect_route = 'views_bulk_operations.execute_batch';
         }
       }
+      elseif (!empty($action['confirm_form_route_name'])) {
+        $redirect_route = $action['confirm_form_route_name'];
+      }
 
-      if ($this->options['batch']) {
+      // Redirect if needed.
+      if (!empty($redirect_route)) {
         if ($form_state->getValue('select_all')) {
           $data['arguments'] = $this->view->args;
           $data['exposed_input'] = $this->view->getExposedInput();
         }
         $data['batch_size'] = $this->options['batch_size'];
         $data['redirect_uri'] = $this->getDestinationArray();
-
-        if ($this->options['form_step'] && $configurable) {
-          $redirect_route = 'views_bulk_operations.execute_configurable';
-        }
-        elseif (!empty($action['confirm_form_route_name'])) {
-          $redirect_route = $action['confirm_form_route_name'];
-        }
-        else {
-          $redirect_route = 'views_bulk_operations.execute_batch';
-        }
 
         $this->userTempStore->set($this->currentUser->id(), $data);
 
@@ -586,43 +581,42 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           'display_id' => $this->view->current_display,
         ]);
       }
+      // Or process rows here.
       else {
-        if (!empty($action['confirm_form_route_name'])) {
-          $this->userTempStore->set($this->currentUser->id(), $data);
-          $form_state->setRedirect($action['confirm_form_route_name'], [
-            'view_id' => $this->view->id(),
-            'display_id' => $this->view->current_display,
-          ], [
-            'query' => $this->getDestinationArray(),
-          ]);
-          return;
-        }
-        else {
-          $count = 0;
-          $this->actionProcessor->initialize($data);
-          $entities = [];
-          if ($form_state->getValue('select_all')) {
-            $this->view->query->setLimit(0);
-            $this->view->query->setOffset(0);
-            $this->view->query->execute($this->view);
-
-            foreach ($this->view->result as $delta => $row) {
-              $entities[] = $row->_entity;
-            }
+        // Get configuration.
+        if ($configurable) {
+          $actionObject = $this->actionManager->createInstance($action_id);
+          if (method_exists($actionObject, 'submitConfigurationForm')) {
+            $actionObject->submitConfigurationForm($form, $form_state);
+            $data['configuration'] = $actionObject->getConfiguration();
           }
           else {
-            foreach ($data['list'] as $item) {
-              $entities[] = $this->actionProcessor->getEntity($item);
-            }
+            $form_state->cleanValues();
+            $data['configuration'] = $form_state->getValues();
           }
-          $this->actionProcessor->process($entities);
+        }
 
-          $count = count($entities);
-          if ($count) {
-            drupal_set_message($this->formatPlural($count, '%action was applied to @count item.', '%action was applied to @count items.', [
-              '%action' => $action['label'],
-            ]));
-          }
+        $count = 0;
+        $list = $data['list'];
+        unset($data['list']);
+
+        // Populate and process queue.
+        $this->actionProcessor->initialize($data);
+        if ($this->actionProcessor->populateQueue($list, $data)) {
+          $results = $this->actionProcessor->process();
+          $count = count($results);
+        }
+
+        if ($count) {
+          drupal_set_message($this->formatPlural($count, '%action was applied to @count item.', '%action was applied to %count items.', [
+            '%action' => $action['label'],
+            '%count' => $count,
+          ]));
+        }
+        else {
+          drupal_set_message($this->t('%action was executed but no items were processed.', [
+            '%action' => $action['label'],
+          ]));
         }
 
       }

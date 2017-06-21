@@ -4,6 +4,7 @@ namespace Drupal\views_bulk_operations\Action;
 
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Action\ConfigurableActionBase;
+use Drupal\views\ViewExecutable;
 
 /**
  * Views Bulk Operations action plugin base.
@@ -17,9 +18,16 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase impl
    * Action context.
    *
    * @var array
-   *   Contains view data.
+   *   Contains view data and optionally batch operation context.
    */
   protected $context;
+
+  /**
+   * The processed view.
+   *
+   * @var \Drupal\views\ViewExecutable
+   */
+  protected $view;
 
   /**
    * {@inheritdoc}
@@ -28,6 +36,13 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase impl
     foreach ($context as $key => $item) {
       $this->context[$key] = $item;
     }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setView(ViewExecutable $view) {
+    $this->view = $view;
   }
 
   /**

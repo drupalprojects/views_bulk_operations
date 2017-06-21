@@ -39,7 +39,8 @@ class ViewsBulkOperationsActionManager extends ActionManager {
     // Merge in defaults.
     $definition += [
       'confirm' => FALSE,
-      'pass_rows' => FALSE,
+      'pass_context' => FALSE,
+      'pass_view' => FALSE,
     ];
 
     // Add default confirmation form if confirm set to TRUE
