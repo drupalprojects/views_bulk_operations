@@ -184,7 +184,7 @@ class ViewsBulkOperationsActionProcessor {
       if ($this->actionDefinition['pass_view']) {
 
         // TODO: Include language support here.
-        $ids = array();
+        $ids = [];
         foreach ($this->queue as $entity) {
           $id = $entity->id();
           $ids[$id] = $id;

@@ -13,6 +13,11 @@ use Drupal\Core\Access\AccessResult;
  */
 class ViewsBulkOperationsAccess implements AccessInterface {
 
+  /**
+   * Temporary user storage object.
+   *
+   * @var \Drupal\user\PrivateTempStoreFactory
+   */
   protected $tempStoreFactory;
 
   /**
@@ -27,6 +32,8 @@ class ViewsBulkOperationsAccess implements AccessInterface {
    *
    * @param \Drupal\Core\Session\AccountInterface $account
    *   Run access checks for this account.
+   * @param \Drupal\Core\Routing\RouteMatch $routeMatch
+   *   The matched route.
    */
   public function access(AccountInterface $account, RouteMatch $routeMatch) {
     $parameters = $routeMatch->getParameters()->all();
