@@ -34,18 +34,6 @@ class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase {
   /**
    * {@inheritdoc}
    */
-  public function executeMultiple(array $objects) {
-    $results = [];
-    foreach ($objects as $entity) {
-      $results[] = $this->execute($entity);
-    }
-
-    return $results;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function execute($entity = NULL) {
     /*
      * All config resides in $this->configuration.

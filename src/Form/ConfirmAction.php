@@ -56,7 +56,6 @@ class ConfirmAction extends FormBase {
 
     $form_state->setStorage($view_data);
 
-    $action = $this->actionManager->createInstance($view_data['action_id']);
     $definition = $this->actionManager->getDefinition($view_data['action_id']);
 
     // Get count of entities to be processed.
@@ -83,7 +82,7 @@ class ConfirmAction extends FormBase {
 
     $form['actions']['submit'] = [
       '#type' => 'submit',
-      '#value' => t('Execute action'),
+      '#value' => $this->t('Execute action'),
       '#submit' => [
         [$this, 'submitForm'],
       ],

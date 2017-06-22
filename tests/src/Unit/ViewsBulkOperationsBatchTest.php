@@ -40,7 +40,7 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
       ->method('process')
       ->will($this->returnCallback(function ($entities) {
         $return = [];
-        foreach ($entities as $entity) {
+        for ($i = 0; $i < count($entities); $i++) {
           $return[] = 'Some action';
         }
         return $return;

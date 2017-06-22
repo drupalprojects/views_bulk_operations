@@ -8,15 +8,12 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
 use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
-use Drupal\Core\Routing\RedirectDestinationTrait;
 use Drupal\Core\Url;
 
 /**
  * Action configuration form.
  */
 class ConfigureAction extends FormBase {
-
-  use RedirectDestinationTrait;
 
   /**
    * Constructor.
@@ -68,7 +65,7 @@ class ConfigureAction extends FormBase {
 
     $form['actions']['submit'] = [
       '#type' => 'submit',
-      '#value' => t('Apply'),
+      '#value' => $this->t('Apply'),
       '#submit' => [
         [$this, 'submitForm'],
       ],

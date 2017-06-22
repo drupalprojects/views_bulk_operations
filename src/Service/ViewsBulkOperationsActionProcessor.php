@@ -15,22 +15,67 @@ class ViewsBulkOperationsActionProcessor {
 
   use StringTranslationTrait;
 
+  /**
+   * Entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
   protected $entityTypeManager;
 
+  /**
+   * VBO action manager.
+   *
+   * @var \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager
+   */
   protected $actionManager;
 
+  /**
+   * Current user.
+   *
+   * @var \Drupal\Core\Session\AccountProxyInterface
+   */
   protected $user;
 
+  /**
+   * Definition of the processed action.
+   *
+   * @var array
+   */
   protected $actionDefinition;
 
+  /**
+   * The processed action object.
+   *
+   * @var array
+   */
   protected $action;
 
+  /**
+   * Type of the processed entities.
+   *
+   * @var string
+   */
   protected $entityType;
 
+  /**
+   * Entity storage object for the current type.
+   *
+   * @var \Drupal\Core\Entity\ContentEntityStorageInterface
+   */
   protected $entityStorage;
 
+  /**
+   * Data describing the view and item selection.
+   *
+   * @var array
+   */
   protected $viewData;
 
+  /**
+   * Array of entities that will be processed in the current batch.
+   *
+   * @var array
+   */
   protected $queue;
 
   /**
@@ -123,7 +168,7 @@ class ViewsBulkOperationsActionProcessor {
       }
       $view->query->setOffset($offset);
       $view->query->execute($view);
-      foreach ($view->result as $delta => $row) {
+      foreach ($view->result as $row) {
         $this->queue[] = $this->getEntityTranslation($row);
       }
     }
@@ -142,12 +187,12 @@ class ViewsBulkOperationsActionProcessor {
         $ids = array();
         foreach ($this->queue as $entity) {
           $id = $entity->id();
-          $nids[$id] = $id;
+          $ids[$id] = $id;
         }
 
         $base_table = $view->storage->get('base_table');
         $alias = $view->query->tables[$base_table][$base_table]['alias'];
-        $view->build_info['query']->condition($alias . '.' . $view->storage->get('base_field'), $nids, 'in');
+        $view->build_info['query']->condition($alias . '.' . $view->storage->get('base_field'), $ids, 'in');
         $view->query->execute($view);
       }
     }

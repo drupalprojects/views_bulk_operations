@@ -58,9 +58,7 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase impl
   public function executeMultiple(array $objects) {
     $results = [];
     foreach ($objects as $entity) {
-      // Do some processing..
-      // ...
-      $results[] = 'Some action has been performed';
+      $results[] = $this->execute($entity);
     }
 
     return $results;

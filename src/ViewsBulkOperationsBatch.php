@@ -59,7 +59,6 @@ class ViewsBulkOperationsBatch {
    */
   public static function finished($success, $results, $operations) {
     if ($success) {
-      $nres = count($results);
       $operations = array_count_values($results);
       $details = [];
       foreach ($operations as $op => $count) {

@@ -5,7 +5,7 @@
 
 (function ($, Drupal) {
 
-  "use strict";
+  'use strict';
 
   /**
    * @type {Drupal~behavior}
@@ -21,7 +21,7 @@
    */
   Drupal.selectAll = function () {
     var $viewContent = $(this);
-    var $viewsTable = $('table.views-table', $viewContent)
+    var $viewsTable = $('table.views-table', $viewContent);
     var colspan = $('table.views-table > thead th', $viewContent).length;
     var $primarySelectAll = $('.vbo-select-all', $viewContent);
     var $tableSelectAll = $(this).find('.select-all input').first();
