@@ -89,10 +89,15 @@ class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase {
    * {@inheritdoc}
    */
   public function access($object, AccountInterface $account = NULL, $return_as_object = FALSE) {
-    $access = $object->access('update', $account, TRUE)
-      ->andIf($object->status->access('edit', $account, TRUE));
+    if ($object->getEntityType() === 'node') {
+      $access = $object->access('update', $account, TRUE)
+        ->andIf($object->status->access('edit', $account, TRUE));
+      return $return_as_object ? $access : $access->isAllowed();
+    }
 
-    return $return_as_object ? $access : $access->isAllowed();
+    // Other entity types may have different
+    // access methods and properties.
+    return TRUE;
   }
 
 }

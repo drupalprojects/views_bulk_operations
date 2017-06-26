@@ -7,6 +7,8 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\views\Views;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\views\ViewExecutable;
+use Drupal\views\ResultRow;
 
 /**
  * Defines VBO action processor.
@@ -268,8 +270,14 @@ class ViewsBulkOperationsActionProcessor {
 
   /**
    * Get entity translation from views row.
+   *
+   * @param \Drupal\views\ResultRow $row
+   *   Views result row.
+   *
+   * @return \Drupal\Core\Entity\FieldableEntityInterface
+   *   The translated entity.
    */
-  public function getEntityTranslation($row) {
+  public function getEntityTranslation(ResultRow $row) {
     if ($row->_entity->isTranslatable()) {
       $language_field = $this->entityType . '_field_data_langcode';
       if ($row->_entity instanceof TranslatableInterface && isset($row->{$language_field})) {
@@ -281,8 +289,13 @@ class ViewsBulkOperationsActionProcessor {
 
   /**
    * Populate view result with selected rows.
+   *
+   * @param \Drupal\views\ViewExecutable $view
+   *   The view object.
+   * @param array $list
+   *   User selection data.
    */
-  protected function getViewResult($view, $list) {
+  protected function getViewResult(ViewExecutable $view, array $list) {
     $ids = [];
     foreach ($this->queue as $entity) {
       $id = $entity->id();
