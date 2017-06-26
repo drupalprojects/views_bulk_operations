@@ -182,18 +182,7 @@ class ViewsBulkOperationsActionProcessor {
 
       // Get view rows if required.
       if ($this->actionDefinition['pass_view']) {
-
-        // TODO: Include language support here.
-        $ids = [];
-        foreach ($this->queue as $entity) {
-          $id = $entity->id();
-          $ids[$id] = $id;
-        }
-
-        $base_table = $view->storage->get('base_table');
-        $alias = $view->query->tables[$base_table][$base_table]['alias'];
-        $view->build_info['query']->condition($alias . '.' . $view->storage->get('base_field'), $ids, 'in');
-        $view->query->execute($view);
+        $this->getViewResult($view, $list);
       }
     }
 
@@ -288,6 +277,35 @@ class ViewsBulkOperationsActionProcessor {
       }
     }
     return $row->_entity;
+  }
+
+  /**
+   * Populate view result with selected rows.
+   */
+  protected function getViewResult($view, $list) {
+    $ids = [];
+    foreach ($this->queue as $entity) {
+      $id = $entity->id();
+      $ids[$id] = $id;
+    }
+
+    $base_table = $view->storage->get('base_table');
+    $alias = $view->query->tables[$base_table][$base_table]['alias'];
+    $view->build_info['query']->condition($alias . '.' . $view->storage->get('base_field'), $ids, 'in');
+    $view->query->execute($view);
+
+    // Filter result using the $list array.
+    $language_field = $this->entityType . '_field_data_langcode';
+    $selection = [];
+    foreach ($list as $item) {
+      $selection[$item[0]][$item[1]] = TRUE;
+    }
+    foreach ($view->result as $delta => $row) {
+      if (isset($row->{$language_field}) && !isset($selection[$row->{$language_field}][$row->_entity->id()])) {
+        unset($view->result[$delta]);
+      }
+    }
+    $view->result = array_values($view->result);
   }
 
 }
