@@ -60,7 +60,7 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase impl
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
-
+    return $form;
   }
 
   /**
@@ -74,7 +74,8 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase impl
    * {@inheritdoc}
    */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
-
+    $form_state->cleanValues();
+    $this->configuration = $form_state->getValues();
   }
 
   /**
