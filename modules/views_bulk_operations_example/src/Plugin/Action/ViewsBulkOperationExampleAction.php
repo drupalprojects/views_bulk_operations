@@ -7,24 +7,17 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
 
 /**
- * An example action covering all possible options.
+ * An example action covering most of the possible options.
  *
- * There are 2 additional parameters in annotation:
- *   - confirm: should a confirm route be used?
- *   (if confirm_form_route_name parameter is not provided or empty,
- *   the VBO default confirm form will be used), actions with
- *   the default confirm form route are always processed using batching,
- *   - pass_rows: should view rows be passed to the action context?
- *
- * If type is left empty, action will be possible for all
+ * If type is left empty, action will be selectable for all
  * entity types.
  *
  * @Action(
  *   id = "views_bulk_operations_example",
  *   label = @Translation("VBO example action"),
  *   type = "",
+ *   configurable = TRUE,
  *   confirm = TRUE,
- *   confirm_form_route_name = "",
  *   pass_context = TRUE,
  *   pass_view = TRUE
  * )

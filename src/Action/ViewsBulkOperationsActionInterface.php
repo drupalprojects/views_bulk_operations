@@ -21,7 +21,7 @@ interface ViewsBulkOperationsActionInterface {
    *
    * @see ViewsBulkOperationsActionBase::setContext
    */
-  public function setContext(array $context);
+  public function setContext(array &$context);
 
   /**
    * Set view object.

@@ -32,8 +32,12 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase impl
   /**
    * {@inheritdoc}
    */
-  public function setContext(array $context) {
+  public function setContext(array &$context) {
+    $this->context['sandbox'] = &$context['sandbox'];
     foreach ($context as $key => $item) {
+      if ($key === 'sandbox') {
+        continue;
+      }
       $this->context[$key] = $item;
     }
   }
@@ -50,6 +54,27 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase impl
    */
   public function buildPreConfigurationForm(array $element, array $values, FormStateInterface $form_state) {
     return $element;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
+
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function validateConfigurationForm(array &$form, FormStateInterface $form_state) {
+
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
+
   }
 
   /**

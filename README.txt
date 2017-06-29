@@ -32,17 +32,19 @@ Available annotation parameters:
   - id: The action ID (required),
   - label: Action label (required),
   - type: Entity type for the action, if left empty, action will be
-    applicable to all entity types,
+    applicable to all entity types (required),
+  - configurable: If set to TRUE, action configuration step
+    will be enabled (default: FALSE),
   - confirm: If set to TRUE and the next parameter is empty,
-    the module default confirmation form will be used,
+    the module default confirmation form will be used (default: FALSE),
   - confirm_form_route_name: Route name of the action confirmation form.
     If left empty and the previous parameter is empty, there will be
-    no confirmation step.
+    no confirmation step (default: empty string).
   - pass_context: If set to TRUE, the entire batch context 
-    will be added to the action $context parameter.
+    will be added to the action $context parameter (default: FALSE).
   - pass_view: If set to TRUE, the entire view with selected
     results ($view->result) of the current batch will be available
-    in the action $view parameter.
+    in the action $view parameter (default: FALSE).
 
 
 Additional notes
