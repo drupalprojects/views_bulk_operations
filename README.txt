@@ -22,7 +22,7 @@ Getting started
 Creating custom actions
 -----------------------
 
-Example that covers all possibilities available in
+Example that covers different possibilities is available in
 modules/views_bulk_operatios_example/.
 
 In a module, create an action plugin (check the example module
@@ -33,8 +33,6 @@ Available annotation parameters:
   - label: Action label (required),
   - type: Entity type for the action, if left empty, action will be
     applicable to all entity types (required),
-  - configurable: If set to TRUE, action configuration step
-    will be enabled (default: FALSE),
   - confirm: If set to TRUE and the next parameter is empty,
     the module default confirmation form will be used (default: FALSE),
   - confirm_form_route_name: Route name of the action confirmation form.

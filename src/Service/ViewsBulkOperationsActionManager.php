@@ -38,7 +38,6 @@ class ViewsBulkOperationsActionManager extends ActionManager {
   protected function extendDefinition(array &$definition) {
     // Merge in defaults.
     $definition += [
-      'configurable' => FALSE,
       'confirm' => FALSE,
       'pass_context' => FALSE,
       'pass_view' => FALSE,

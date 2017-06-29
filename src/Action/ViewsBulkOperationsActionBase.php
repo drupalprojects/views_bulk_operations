@@ -2,8 +2,9 @@
 
 namespace Drupal\views_bulk_operations\Action;
 
+use Drupal\Core\Action\ActionBase;
+use Drupal\Component\Plugin\ConfigurablePluginInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Action\ConfigurableActionBase;
 use Drupal\views\ViewExecutable;
 
 /**
@@ -12,7 +13,7 @@ use Drupal\views\ViewExecutable;
  * Provides a base implementation for a configurable
  * and preconfigurable VBO Action plugin.
  */
-abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase implements ViewsBulkOperationsActionInterface {
+abstract class ViewsBulkOperationsActionBase extends ActionBase implements ViewsBulkOperationsActionInterface, ConfigurablePluginInterface {
 
   /**
    * Action context.
@@ -28,6 +29,13 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase impl
    * @var \Drupal\views\ViewExecutable
    */
   protected $view;
+
+  /**
+   * Configuration array.
+   *
+   * @var array
+   */
+  protected $configuration;
 
   /**
    * {@inheritdoc}
@@ -59,28 +67,6 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase impl
   /**
    * {@inheritdoc}
    */
-  public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
-    return $form;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function validateConfigurationForm(array &$form, FormStateInterface $form_state) {
-
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
-    $form_state->cleanValues();
-    $this->configuration = $form_state->getValues();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function executeMultiple(array $objects) {
     $results = [];
     foreach ($objects as $entity) {
@@ -88,6 +74,34 @@ abstract class ViewsBulkOperationsActionBase extends ConfigurableActionBase impl
     }
 
     return $results;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function defaultConfiguration() {
+    return [];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getConfiguration() {
+    return $this->configuration;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setConfiguration(array $configuration) {
+    $this->configuration = $configuration;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function calculateDependencies() {
+    return [];
   }
 
 }

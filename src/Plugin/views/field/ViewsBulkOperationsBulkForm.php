@@ -266,14 +266,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     }
 
     foreach ($this->actions as $id => $action) {
-      if ($this->isConfigurable($action) && method_exists($action['class'], 'buildPreConfigurationForm')) {
+      if (method_exists($action['class'], 'buildPreConfigurationForm')) {
         $wrapper_id = 'action-' . $id . '-wrapper';
-        $form['selected_actions'][$id] = [
-          '#type' => 'container',
-          '#attributes' => [
-            'id' => $wrapper_id,
-          ],
-        ];
 
         $form['selected_actions'][$id]['state'] = [
           '#type' => 'checkbox',
@@ -287,26 +281,23 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         // Without this there are problems when entering configuration
         // value for the first time. TODO: investigate further.
         $form['selected_actions'][$id]['preconfiguration'] = [
-          '#type' => 'value',
-          '#value' => NULL,
+          '#type' => 'details',
+          '#title' => $this->t('Action preconfiguration'),
+          '#open' => TRUE,
+          // The next line is EVIL, but couldn't find a solution for this.
+          '#attributes' => ['style' => 'display: none', 'id' => $wrapper_id],
         ];
 
-        if (!empty($selected_actions[$id])) {
-          // Load preconfiguration form.
-          $actionObject = $this->actionManager->createInstance($id);
+        // Load preconfiguration form.
+        $actionObject = $this->actionManager->createInstance($id);
 
-          if (!isset($form['selected_actions'][$id]['preconfiguration'])) {
-            $form['selected_actions'][$id]['preconfiguration'] = [
-              '#type' => 'details',
-              '#title' => $this->t('Action preconfiguration'),
-              '#open' => TRUE,
-            ];
-          }
-          if (!isset($preconfiguration[$id])) {
-            $preconfiguration[$id] = [];
-          }
-          $form['selected_actions'][$id]['preconfiguration'] = $actionObject->buildPreConfigurationForm($form['selected_actions'][$id]['preconfiguration'], $preconfiguration[$id], $form_state);
+        if (!empty($selected_actions[$id])) {
+          unset($form['selected_actions'][$id]['preconfiguration']['#attributes']['style']);
         }
+        if (!isset($preconfiguration[$id])) {
+          $preconfiguration[$id] = [];
+        }
+        $form['selected_actions'][$id]['preconfiguration'] = $actionObject->buildPreConfigurationForm($form['selected_actions'][$id]['preconfiguration'], $preconfiguration[$id], $form_state);
       }
       else {
         $form['selected_actions'][$id]['state'] = [
@@ -348,7 +339,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $parents = $form_state->getTriggeringElement()['#parents'];
     unset($parents[count($parents) - 1]);
     $element = NestedArray::getValue($form, $parents);
-    return $element;
+    return $element['preconfiguration'];
   }
 
   /**
@@ -712,7 +703,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * Check if an action is configurable.
    */
   protected function isConfigurable($action) {
-    return ($action['configurable'] && in_array('Drupal\Component\Plugin\ConfigurablePluginInterface', class_implements($action['class']), TRUE));
+    return (in_array('Drupal\Core\Plugin\PluginFormInterface', class_implements($action['class']), TRUE) || method_exists($action['class'], 'buildConfigurationForm'));
   }
 
 }
