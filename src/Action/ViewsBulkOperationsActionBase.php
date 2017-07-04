@@ -4,7 +4,6 @@ namespace Drupal\views_bulk_operations\Action;
 
 use Drupal\Core\Action\ActionBase;
 use Drupal\Component\Plugin\ConfigurablePluginInterface;
-use Drupal\Core\Form\FormStateInterface;
 use Drupal\views\ViewExecutable;
 
 /**
@@ -55,13 +54,6 @@ abstract class ViewsBulkOperationsActionBase extends ActionBase implements Views
    */
   public function setView(ViewExecutable $view) {
     $this->view = $view;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function buildPreConfigurationForm(array $element, array $values, FormStateInterface $form_state) {
-    return $element;
   }
 
   /**
