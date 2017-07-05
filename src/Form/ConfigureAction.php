@@ -77,6 +77,17 @@ class ConfigureAction extends FormBase {
   /**
    * {@inheritdoc}
    */
+  public function validateForm(array &$form, FormStateInterface $form_state) {
+    $view_data = $form_state->getStorage();
+    $action = $this->actionManager->createInstance($view_data['action_id']);
+    if (method_exists($action, 'validateConfigurationForm')) {
+      $action->validateConfigurationForm($form, $form_state);
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $view_data = $form_state->getStorage();
 

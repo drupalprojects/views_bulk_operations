@@ -133,6 +133,9 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     // Initialize tempstore object.
     $tempstore_name = 'views_bulk_operations_' . $view->id() . '_' . $view->current_display;
     $this->userTempStore = $this->tempStoreFactory->get($tempstore_name);
+
+    // Force form_step setting to TRUE due to #2879310.
+    $this->options['form_step'] = TRUE;
   }
 
   /**
@@ -224,6 +227,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       '#type' => 'checkbox',
       '#title' => $this->t('Configuration form on new page (configurable actions)'),
       '#default_value' => $this->options['form_step'],
+      // Due to #2879310 this setting must always be at TRUE.
+      '#access' => FALSE,
     ];
 
     $form['action_title'] = [
@@ -428,7 +433,11 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       if (empty($this->options['form_step'])) {
         $form['header'][$this->options['id']]['action']['#ajax'] = [
           'callback' => [__CLASS__, 'viewsFormAjax'],
-          'wrapper' => 'vbo-action-form-wrapper',
+          'wrapper' => 'vbo-action-configuration-wrapper',
+        ];
+        $form['header'][$this->options['id']]['configuration'] = [
+          '#type' => 'container',
+          '#attributes' => ['id' => 'vbo-action-configuration-wrapper'],
         ];
 
         $action_id = $form_state->getValue('action');
@@ -436,10 +445,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           $action = $this->actions[$action_id];
           if ($this->isConfigurable($action)) {
             $actionObject = $this->actionManager->createInstance($action_id);
-            if (!isset($form['header'][$this->options['id']])) {
-              $form['header'][$this->options['id']] = [];
-            }
-            $form['header'][$this->options['id']] += $actionObject->buildConfigurationForm($form['header'][$this->options['id']], $form_state);
+            $form['header'][$this->options['id']]['configuration'] += $actionObject->buildConfigurationForm($form['header'][$this->options['id']]['configuration'], $form_state);
+            $form['header'][$this->options['id']]['configuration']['#config_included'] = TRUE;
           }
         }
       }
@@ -475,7 +482,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   public static function viewsFormAjax(array $form, FormStateInterface $form_state) {
     $trigger = $form_state->getTriggeringElement();
     $plugin_id = $trigger['#array_parents'][1];
-    return $form['header'][$plugin_id];
+    return $form['header'][$plugin_id]['configuration'];
   }
 
   /**
@@ -548,6 +555,19 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       $configurable = $this->isConfigurable($action);
 
+      // Get configuration if using AJAX.
+      if ($configurable && empty($this->options['form_step'])) {
+        $actionObject = $this->actionManager->createInstance($action_id);
+        if (method_exists($actionObject, 'submitConfigurationForm')) {
+          $actionObject->submitConfigurationForm($form, $form_state);
+          $data['configuration'] = $actionObject->getConfiguration();
+        }
+        else {
+          $form_state->cleanValues();
+          $data['configuration'] = $form_state->getValues();
+        }
+      }
+
       // Routing - determine redirect route.
       if ($this->options['form_step'] && $configurable) {
         $redirect_route = 'views_bulk_operations.execute_configurable';
@@ -582,19 +602,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
       // Or process rows here.
       else {
-        // Get configuration.
-        if ($configurable) {
-          $actionObject = $this->actionManager->createInstance($action_id);
-          if (method_exists($actionObject, 'submitConfigurationForm')) {
-            $actionObject->submitConfigurationForm($form, $form_state);
-            $data['configuration'] = $actionObject->getConfiguration();
-          }
-          else {
-            $form_state->cleanValues();
-            $data['configuration'] = $form_state->getValues();
-          }
-        }
-
         $count = 0;
         $list = $data['list'];
         unset($data['list']);
@@ -639,6 +646,16 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       $selected = array_filter($form_state->getValue($this->options['id']));
       if (empty($selected)) {
         $form_state->setErrorByName('', $this->t('No items selected.'));
+      }
+    }
+
+    // Action config validation (if implemented).
+    if (empty($this->options['form_step']) && !empty($form['header'][$this->options['id']]['configuration']['#config_included'])) {
+      $action_id = $form_state->getValue('action');
+      $action = $this->actions[$action_id];
+      if (method_exists($action['class'], 'validateConfigurationForm')) {
+        $actionObject = $this->actionManager->createInstance($action_id);
+        $actionObject->validateConfigurationForm($form['header'][$this->options['id']]['configuration'], $form_state);
       }
     }
   }

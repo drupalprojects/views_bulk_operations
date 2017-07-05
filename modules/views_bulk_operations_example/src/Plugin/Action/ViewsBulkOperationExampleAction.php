@@ -91,7 +91,7 @@ class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase impl
    *   The form state object.
    */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
-    // This is not required here, when this method is inherited,
+    // This is not required here, when this method is not defined,
     // form values are assigned to the action configuration by default.
     // This function is a must only when user input processing is needed.
     $this->configuration['example_config_setting'] = $form_state->getValue('example_config_setting');
