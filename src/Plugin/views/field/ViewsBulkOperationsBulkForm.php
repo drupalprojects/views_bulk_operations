@@ -125,7 +125,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $this->actions = [];
     foreach ($this->actionManager->getDefinitions() as $id => $definition) {
       if (empty($definition['type']) || $definition['type'] === $entity_type) {
-        $definition['action_type'] = 'action';
         $this->actions[$id] = $definition;
       }
     }
@@ -463,8 +462,10 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           '#attributes' => ['class' => ['vbo-select-all']],
         ];
 
-        // Add fancy select all library.
-        $form['#attached']['library'][] = 'views_bulk_operations/views_bulk_operations.selectAll';
+        // Add fancy select all library for table display style.
+        if ($this->view->style_plugin instanceof Table) {
+          $form['#attached']['library'][] = 'views_bulk_operations/views_bulk_operations.selectAll';
+        }
       }
 
       // Duplicate the form actions into the action container in the header.
