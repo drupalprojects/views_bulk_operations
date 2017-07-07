@@ -61,8 +61,9 @@ class ConfigureAction extends FormBase {
 
     $form['#title'] = $this->t('Configure %action applied to the selection', ['%action' => $definition['label']]);
 
-    $form += $action->buildConfigurationForm($form, $form_state);
-
+    // :D Make sure the submit button is at the bottom of the form
+    // and is editale from the action buildConfigurationForm method.
+    $form['actions']['#weight'] = 666;
     $form['actions']['submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Apply'),
@@ -70,6 +71,8 @@ class ConfigureAction extends FormBase {
         [$this, 'submitForm'],
       ],
     ];
+
+    $form = $action->buildConfigurationForm($form, $form_state);
 
     return $form;
   }
