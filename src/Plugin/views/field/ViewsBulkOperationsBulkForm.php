@@ -22,6 +22,8 @@ use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Core\Ajax\AjaxResponse;
+use Drupal\Core\Ajax\InvokeCommand;
 
 /**
  * Defines a actions-based bulk operation form element.
@@ -279,17 +281,19 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           '#default_value' => empty($selected_actions[$id]) ? 0 : 1,
           '#ajax' => [
             'callback' => [__CLASS__, 'optionsFormAjax'],
-            'wrapper' => $wrapper_id,
           ],
         ];
-        // Without this there are problems when entering configuration
-        // value for the first time. TODO: investigate further.
+
+        // There are problems with AJAX on this form when adding
+        // new elements (Views issue), a workaround is to render
+        // all elements and show/hide them when needed.
         $form['selected_actions'][$id]['preconfiguration'] = [
           '#type' => 'details',
-          '#title' => $this->t('Action preconfiguration'),
+          '#title' => $this->t('Preconfiguration for "@action"', [
+            '@action' => $action['label'],
+          ]),
           '#open' => TRUE,
-          // The next line is EVIL, but couldn't find a solution for this.
-          '#attributes' => ['style' => 'display: none', 'id' => $wrapper_id],
+          '#attributes' => ['style' => 'display: none'],
         ];
 
         // Load preconfiguration form.
@@ -343,7 +347,13 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $parents = $form_state->getTriggeringElement()['#parents'];
     unset($parents[count($parents) - 1]);
     $element = NestedArray::getValue($form, $parents);
-    return $element['preconfiguration'];
+    $response = new AjaxResponse();
+    $state = $form_state->getValue($element['state']['#parents']);
+    $response->addCommand(new InvokeCommand(
+      '[data-drupal-selector="' . $element['preconfiguration']['#attributes']['data-drupal-selector'] . '"]',
+      $state ? 'show' : 'hide'
+    ));
+    return $response;
   }
 
   /**
