@@ -51,7 +51,7 @@ class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase impl
     $form['example_preconfig_setting'] = [
       '#title' => $this->t('Example setting'),
       '#type' => 'textfield',
-      '#default_value' => $values['example_preconfig_setting'],
+      '#default_value' => isset($values['example_preconfig_setting']) ? $values['example_preconfig_setting'] : '',
     ];
     return $form;
   }
