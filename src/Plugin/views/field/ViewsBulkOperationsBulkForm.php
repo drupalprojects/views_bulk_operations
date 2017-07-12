@@ -199,7 +199,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $options['batch_size'] = ['default' => 10];
     $options['form_step'] = ['default' => TRUE];
     $options['action_title'] = ['default' => $this->t('Action')];
-    $options['include_exclude'] = ['default' => 'exclude'];
     $options['selected_actions'] = ['default' => []];
     $options['preconfiguration'] = ['default' => []];
     return $options;
@@ -237,16 +236,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       '#title' => $this->t('Action title'),
       '#default_value' => $this->options['action_title'],
       '#description' => $this->t('The title shown above the actions dropdown.'),
-    ];
-
-    $form['include_exclude'] = [
-      '#type' => 'radios',
-      '#title' => $this->t('Available actions'),
-      '#options' => [
-        'include' => $this->t('Only selected actions'),
-        'exclude' => $this->t('All actions, except selected'),
-      ],
-      '#default_value' => $this->options['include_exclude'],
     ];
 
     $form['selected_actions'] = [
@@ -507,15 +496,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       '' => $this->t('-- Select action --'),
     ];
     foreach ($this->actions as $id => $definition) {
-      $in_selected = in_array($id, $this->options['selected_actions'], TRUE);
-      // If the field is configured to include only the selected actions,
-      // skip actions that were not selected.
-      if (($this->options['include_exclude'] == 'include') && !$in_selected) {
-        continue;
-      }
-      // Otherwise, if the field is configured to exclude the selected
-      // actions, skip actions that were selected.
-      elseif (($this->options['include_exclude'] == 'exclude') && $in_selected) {
+      if (!in_array($id, $this->options['selected_actions'], TRUE)) {
         continue;
       }
 
