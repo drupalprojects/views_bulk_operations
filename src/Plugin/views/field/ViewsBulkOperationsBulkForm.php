@@ -21,9 +21,6 @@ use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Component\Utility\NestedArray;
-use Drupal\Core\Ajax\AjaxResponse;
-use Drupal\Core\Ajax\InvokeCommand;
 
 /**
  * Defines a actions-based bulk operation form element.
@@ -208,6 +205,9 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * {@inheritdoc}
    */
   public function buildOptionsForm(&$form, FormStateInterface $form_state) {
+    $form['#attributes']['class'][] = 'views-bulk-operations-ui';
+    $form['#attached']['library'][] = 'views_bulk_operations/adminUi';
+
     $form['batch'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Process in a batch operation'),
@@ -261,28 +261,27 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     }
 
     foreach ($this->actions as $id => $action) {
-      if (method_exists($action['class'], 'buildPreConfigurationForm')) {
-        $wrapper_id = 'action-' . $id . '-wrapper';
+      $form['selected_actions'][$id]['state'] = [
+        '#type' => 'checkbox',
+        '#title' => $action['label'],
+        '#default_value' => empty($selected_actions[$id]) ? 0 : 1,
+        '#attributes' => ['class' => ['action-state']],
+      ];
 
-        $form['selected_actions'][$id]['state'] = [
-          '#type' => 'checkbox',
-          '#title' => $action['label'],
-          '#default_value' => empty($selected_actions[$id]) ? 0 : 1,
-          '#ajax' => [
-            'callback' => [__CLASS__, 'optionsFormAjax'],
-          ],
-        ];
+      if (method_exists($action['class'], 'buildPreConfigurationForm')) {
 
         // There are problems with AJAX on this form when adding
         // new elements (Views issue), a workaround is to render
         // all elements and show/hide them when needed.
         $form['selected_actions'][$id]['preconfiguration'] = [
-          '#type' => 'details',
+          '#type' => 'fieldset',
           '#title' => $this->t('Preconfiguration for "@action"', [
             '@action' => $action['label'],
           ]),
-          '#open' => TRUE,
-          '#attributes' => ['style' => 'display: none'],
+          '#attributes' => [
+            'data-for' => $id,
+            'style' => 'display: none',
+          ],
         ];
 
         // Load preconfiguration form.
@@ -295,13 +294,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           $preconfiguration[$id] = [];
         }
         $form['selected_actions'][$id]['preconfiguration'] = $actionObject->buildPreConfigurationForm($form['selected_actions'][$id]['preconfiguration'], $preconfiguration[$id], $form_state);
-      }
-      else {
-        $form['selected_actions'][$id]['state'] = [
-          '#type' => 'checkbox',
-          '#title' => $action['label'],
-          '#default_value' => empty($this->options['selected_actions'][$id]) ? 0 : 1,
-        ];
       }
     }
 
@@ -327,22 +319,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
     }
     parent::submitOptionsForm($form, $form_state);
-  }
-
-  /**
-   * AJAX callback that returns config form element.
-   */
-  public static function optionsFormAjax($form, $form_state) {
-    $parents = $form_state->getTriggeringElement()['#parents'];
-    unset($parents[count($parents) - 1]);
-    $element = NestedArray::getValue($form, $parents);
-    $response = new AjaxResponse();
-    $state = $form_state->getValue($element['state']['#parents']);
-    $response->addCommand(new InvokeCommand(
-      '[data-drupal-selector="' . $element['preconfiguration']['#attributes']['data-drupal-selector'] . '"]',
-      $state ? 'show' : 'hide'
-    ));
-    return $response;
   }
 
   /**
@@ -463,7 +439,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
         // Add fancy select all library for table display style.
         if ($this->view->style_plugin instanceof Table) {
-          $form['#attached']['library'][] = 'views_bulk_operations/views_bulk_operations.selectAll';
+          $form['#attached']['library'][] = 'views_bulk_operations/selectAll';
         }
       }
 
