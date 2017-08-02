@@ -66,6 +66,7 @@ class ConfirmAction extends FormBase {
     else {
       $view = Views::getView($view_data['view_id']);
       $view->setDisplay($view_data['display_id']);
+      $view->get_total_rows = TRUE;
       if (!empty($view_data['arguments'])) {
         $view->setArguments($view_data['arguments']);
       }
@@ -73,7 +74,14 @@ class ConfirmAction extends FormBase {
         $view->setExposedInput($view_data['exposed_input']);
       }
       $view->build();
-      $count = $view->query->query()->countQuery()->execute()->fetchField();
+      $query = $view->query->query();
+      if (!empty($query)) {
+        $count = $query->countQuery()->execute()->fetchField();
+      }
+      else {
+        $view->execute();
+        $count = $view->total_rows;
+      }
     }
 
     $form['#title'] = $this->t('Are you sure you wish to perform %action on %count entities?', [

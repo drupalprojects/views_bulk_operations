@@ -41,6 +41,7 @@ class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase impl
 
     // Do some processing..
     // ...
+    drupal_set_message($entity->label());
     return sprintf('Example action (configuration: %s)', print_r($this->configuration, TRUE));
   }
 

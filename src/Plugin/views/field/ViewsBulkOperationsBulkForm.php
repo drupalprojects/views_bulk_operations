@@ -9,7 +9,6 @@ use Drupal\Core\Entity\RevisionableInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Routing\RedirectDestinationTrait;
-use Drupal\views\Entity\Render\EntityTranslationRenderTrait;
 use Drupal\views\Plugin\views\display\DisplayPluginBase;
 use Drupal\views\Plugin\views\field\FieldPluginBase;
 use Drupal\views\Plugin\views\field\UncacheableFieldHandlerTrait;
@@ -21,6 +20,8 @@ use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Session\AccountInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Drupal\views_bulk_operations\ViewsBulkOperationsEvent;
 
 /**
  * Defines a actions-based bulk operation form element.
@@ -32,7 +33,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
   use RedirectDestinationTrait;
   use UncacheableFieldHandlerTrait;
-  use EntityTranslationRenderTrait;
 
   /**
    * The entity manager.
@@ -40,6 +40,13 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * @var \Drupal\Core\Entity\EntityManagerInterface
    */
   protected $entityManager;
+
+  /**
+   * Event dispatcher service.
+   *
+   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
+   */
+  protected $eventDispatcher;
 
   /**
    * The action storage.
@@ -56,11 +63,33 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   protected $actions = [];
 
   /**
+   * Views row entity getter callable.
+   *
+   * @var string
+   */
+  protected $entityGetter;
+
+  /**
    * The language manager.
    *
    * @var \Drupal\Core\Language\LanguageManagerInterface
    */
   protected $languageManager;
+
+  /**
+   * Entity translation renderers.
+   *
+   * @var array
+   *   Array of renderers for each used entity types.
+   */
+  protected $entityTranslationRenderer;
+
+  /**
+   * Views data of the current view.
+   *
+   * @var array
+   */
+  protected $viewViewsData;
 
   /**
    * Constructs a new BulkForm object.
@@ -71,8 +100,10 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    *   The plugin ID for the plugin instance.
    * @param mixed $plugin_definition
    *   The plugin implementation definition.
-   * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
+   * @param \Drupal\Core\Entity\EntityManagerInterface $entityManager
    *   The entity manager.
+   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
+   *   The event dispatcher.
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
    *   The language manager.
    * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager $actionManager
@@ -84,10 +115,11 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * @param \Drupal\Core\Session\AccountInterface $currentUser
    *   The current user object.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entity_manager, LanguageManagerInterface $language_manager, ViewsBulkOperationsActionManager $actionManager, ViewsBulkOperationsActionProcessor $actionProcessor, PrivateTempStoreFactory $tempStoreFactory, AccountInterface $currentUser) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entityManager, EventDispatcherInterface $eventDispatcher, LanguageManagerInterface $language_manager, ViewsBulkOperationsActionManager $actionManager, ViewsBulkOperationsActionProcessor $actionProcessor, PrivateTempStoreFactory $tempStoreFactory, AccountInterface $currentUser) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
-    $this->entityManager = $entity_manager;
+    $this->entityManager = $entityManager;
+    $this->eventDispatcher = $eventDispatcher;
     $this->languageManager = $language_manager;
     $this->actionManager = $actionManager;
     $this->actionProcessor = $actionProcessor;
@@ -104,6 +136,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       $plugin_id,
       $plugin_definition,
       $container->get('entity.manager'),
+      $container->get('event_dispatcher'),
       $container->get('language_manager'),
       $container->get('plugin.manager.views_bulk_operations_action'),
       $container->get('views_bulk_operations.processor'),
@@ -118,13 +151,23 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   public function init(ViewExecutable $view, DisplayPluginBase $display, array &$options = NULL) {
     parent::init($view, $display, $options);
 
-    $entity_type = $this->getEntityType();
+    // Get view entity types and results fetcher callable.
+    $event = new ViewsBulkOperationsEvent($this->getViewProvider(), $this->getViewViewsData(), $view);
+    $this->eventDispatcher->dispatch(ViewsBulkOperationsEvent::NAME, $event);
+
+    $entity_type = $this->getEntityTypeId();
 
     // Fetch actions.
     $this->actions = [];
-    foreach ($this->actionManager->getDefinitions() as $id => $definition) {
-      if (empty($definition['type']) || $definition['type'] === $entity_type) {
-        $this->actions[$id] = $definition;
+    $entity_types = $event->getEntityTypeIds();
+    $this->entityGetter = $event->getEntityGetter();
+
+    // Get actions only if ther are any entity types set for the view.
+    if (!empty($entity_types)) {
+      foreach ($this->actionManager->getDefinitions() as $id => $definition) {
+        if (empty($definition['type']) || in_array($definition['type'], $entity_types, TRUE)) {
+          $this->actions[$id] = $definition;
+        }
       }
     }
 
@@ -149,7 +192,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * {@inheritdoc}
    */
   public function getCacheContexts() {
-    return $this->languageManager->isMultilingual() ? $this->getEntityTranslationRenderer()->getCacheContexts() : [];
+    return [];
   }
 
   /**
@@ -157,13 +200,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    */
   public function getCacheTags() {
     return [];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getEntityTypeId() {
-    return $this->getEntityType();
   }
 
   /**
@@ -188,6 +224,77 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   }
 
   /**
+   * Helper function to get data of the current view.
+   *
+   * @return array
+   *   Part of views data that refers to the current view.
+   */
+  protected function getViewViewsData() {
+    if (!$this->viewViewsData) {
+      if (!empty($this->options['relationship']) && $this->options['relationship'] != 'none') {
+        $relationship = $this->displayHandler->getOption('relationships')[$this->options['relationship']];
+        $table_data = $this->getViewsData()->get($relationship['table']);
+        $this->viewViewsData = $this->getViewsData()->get($table_data[$relationship['field']]['relationship']['base']);
+      }
+      else {
+        $this->viewViewsData = $this->getViewsData()->get($this->view->storage->get('base_table'));
+      }
+    }
+    return $this->viewViewsData;
+  }
+
+  /**
+   * Get ID of the entity type associated with the view.
+   *
+   * @return string
+   *   Entity type ID.
+   */
+  public function getEntityTypeId() {
+    $views_data = $this->getViewViewsData();
+    if (isset($views_data['table']['entity type'])) {
+      return $views_data['table']['entity type'];
+    }
+    return FALSE;
+  }
+
+  /**
+   * Get view provider.
+   *
+   * @return string
+   *   View provider ID.
+   */
+  public function getViewProvider() {
+    $views_data = $this->getViewViewsData();
+    if (isset($views_data['table']['provider'])) {
+      return $views_data['table']['provider'];
+    }
+    return FALSE;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getEntity(ResultRow $row) {
+    $getter_data = $this->entityGetter;
+    if (!empty($getter_data['file'])) {
+      require_once $getter_data['file'];
+    }
+    if (is_callable($getter_data['callable'])) {
+      return call_user_func($getter_data['callable'], $row, $this->options['relationship']);
+    }
+    else {
+      throw new \Exception(sprintf("Entity getter method %s doesn't exist.", $callable));
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function query() {
+    $this->view->get_total_rows = TRUE;
+  }
+
+  /**
    * {@inheritdoc}
    */
   protected function defineOptions() {
@@ -205,6 +312,19 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * {@inheritdoc}
    */
   public function buildOptionsForm(&$form, FormStateInterface $form_state) {
+    // If the view type is not supported, supress form display.
+    // Also display information note to the user.
+    if (empty($this->actions)) {
+      $form = [
+        '#type' => 'item',
+        '#title' => $this->t('NOTE'),
+        '#markup' => $this->t('Views Bulk Operations will work only with normal entity views and contrib module views that are integrated. See /Drupal\views_bulk_operations\EventSubscriber\ViewsBulkOperationsEventSubscriber class for integration best practice.'),
+        '#prefix' => '<div class="scroll">',
+        '#suffix' => '</div>',
+      ];
+      return;
+    }
+
     $form['#attributes']['class'][] = 'views-bulk-operations-ui';
     $form['#attached']['library'][] = 'views_bulk_operations/adminUi';
 
@@ -361,12 +481,13 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $form['#attached']['library'][] = 'core/drupal.tableselect';
     $use_revision = array_key_exists('revision', $this->view->getQuery()->getEntityTableInfo());
 
-    // Only add the bulk form options and buttons if there are results.
-    if (!empty($this->view->result)) {
+    // Only add the bulk form options and buttons if
+    // there are results and actions are selected.
+    if (!empty($this->view->result) && !empty(array_filter($this->options['selected_actions']))) {
       // Render checkboxes for all rows.
       $form[$this->options['id']]['#tree'] = TRUE;
       foreach ($this->view->result as $row_index => $row) {
-        $entity = $this->getEntityTranslation($this->getEntity($row), $row);
+        $entity = $this->getEntity($row);
 
         $form[$this->options['id']][$row_index] = [
           '#type' => 'checkbox',
@@ -375,7 +496,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           '#title' => $this->t('Update this item'),
           '#title_display' => 'invisible',
           '#default_value' => !empty($form_state->getValue($this->options['id'])[$row_index]) ? 1 : NULL,
-          '#return_value' => self::calculateEntityBulkFormKey($entity, $use_revision),
+          '#return_value' => self::calculateEntityBulkFormKey($entity, $use_revision, $row_index),
         ];
       }
 
@@ -425,9 +546,20 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         }
       }
 
-      // Select all results checkbox.
-      $total_results = $this->view->query->query()->countQuery()->execute()->fetchField();
+      // Get the total number of results. This number is not correct
+      // in $this->view->total_rows for standard entity views, so we
+      // build a custom query in such a case.
+      $query = $this->view->query->query();
+      if (!empty($query)) {
+        $total_results = $query->countQuery()->execute()->fetchField();
+      }
+      else {
+        $total_results = $this->view->total_rows;
+      }
+
       $items_per_page = $this->view->getItemsPerPage();
+
+      // Select all results checkbox.
       if (!empty($items_per_page) && $total_results > $items_per_page) {
         $form['header'][$this->options['id']]['select_all'] = [
           '#type' => 'checkbox',
@@ -503,7 +635,10 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       $data = [
         'action_id' => $action_id,
         'action_label' => $action['label'],
-        'entity_type' => $this->getEntityType(),
+        'entity_type' => $this->getEntityTypeId(),
+        'provider' => $this->getViewProvider(),
+        'getter_data' => $this->entityGetter,
+        'relationship_id' => $this->options['relationship'],
         'preconfiguration' => isset($this->options['preconfiguration'][$action_id]) ? $this->options['preconfiguration'][$action_id] : [],
         'list' => [],
         'view_id' => $this->view->id(),
@@ -631,15 +766,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   /**
    * {@inheritdoc}
    */
-  public function query() {
-    if ($this->languageManager->isMultilingual()) {
-      $this->getEntityTranslationRenderer()->query($this->query, $this->relationship);
-    }
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function clickSortable() {
     return FALSE;
   }
@@ -670,8 +796,13 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    *
    * @see self::loadEntityFromBulkFormKey()
    */
-  public static function calculateEntityBulkFormKey(EntityInterface $entity, $use_revision) {
-    $key_parts = [$entity->language()->getId(), $entity->id()];
+  public static function calculateEntityBulkFormKey(EntityInterface $entity, $use_revision, $row_index) {
+    $key_parts = [
+      $row_index,
+      $entity->language()->getId(),
+      $entity->getEntityTypeId(),
+      $entity->id(),
+    ];
 
     if ($entity instanceof RevisionableInterface && $use_revision) {
       $key_parts[] = $entity->getRevisionId();

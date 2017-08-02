@@ -10,3 +10,7 @@ services:
     arguments: ['@user.private_tempstore']
     tags:
       - { name: access_check, applies_to: _views_bulk_operation_access }
+  views_bulk_operations.view_data_provider:
+    class: Drupal\views_bulk_operations\EventSubscriber\ViewsBulkOperationsEventSubscriber
+    tags:
+      - { name: event_subscriber }

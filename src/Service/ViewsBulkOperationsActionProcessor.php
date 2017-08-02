@@ -60,13 +60,6 @@ class ViewsBulkOperationsActionProcessor {
   protected $entityType;
 
   /**
-   * Entity storage object for the current type.
-   *
-   * @var \Drupal\Core\Entity\ContentEntityStorageInterface
-   */
-  protected $entityStorage;
-
-  /**
    * Data describing the view and item selection.
    *
    * @var array
@@ -112,7 +105,6 @@ class ViewsBulkOperationsActionProcessor {
 
     // Set-up action processor.
     $this->entityType = $view_data['entity_type'];
-    $this->entityStorage = $this->entityTypeManager->getStorage($this->entityType);
 
     // Set entire view data as object parameter for future reference.
     $this->viewData = $view_data;
@@ -129,6 +121,7 @@ class ViewsBulkOperationsActionProcessor {
     if (empty($list) || $this->actionDefinition['pass_view']) {
       $view = Views::getView($data['view_id']);
       $view->setDisplay($data['display_id']);
+      $view->get_total_rows = TRUE;
       if (!empty($data['arguments'])) {
         $view->setArguments($data['arguments']);
       }
@@ -138,25 +131,13 @@ class ViewsBulkOperationsActionProcessor {
       $view->build();
     }
 
-    // Extra processing if this is a batch operation.
+    // Determine batch size and offset.
     if (!empty($context)) {
       $batch_size = empty($data['batch_size']) ? 10 : $data['batch_size'];
       if (!isset($context['sandbox']['offset'])) {
         $context['sandbox']['offset'] = 0;
       }
       $offset = &$context['sandbox']['offset'];
-
-      if (!isset($context['sandbox']['total'])) {
-        if (empty($list)) {
-          $context['sandbox']['total'] = $view->query->query()->countQuery()->execute()->fetchField();
-        }
-        else {
-          $context['sandbox']['total'] = count($list);
-        }
-      }
-      if ($this->actionDefinition['pass_context']) {
-        $this->action->setContext($context);
-      }
     }
     else {
       $offset = 0;
@@ -170,8 +151,13 @@ class ViewsBulkOperationsActionProcessor {
       }
       $view->query->setOffset($offset);
       $view->query->execute($view);
+
+      // Prepare result getter.
+      if (!empty($this->viewData['getter_data']['file'])) {
+        require_once $this->viewData['getter_data']['file'];
+      }
       foreach ($view->result as $row) {
-        $this->queue[] = $this->getEntityTranslation($row);
+        $this->queue[] = call_user_func($this->viewData['getter_data']['callable'], $row, $this->viewData['relationship_id']);
       }
     }
     else {
@@ -185,6 +171,30 @@ class ViewsBulkOperationsActionProcessor {
       // Get view rows if required.
       if ($this->actionDefinition['pass_view']) {
         $this->getViewResult($view, $list);
+      }
+    }
+
+    // Extra processing when executed in a Batch API operation.
+    if (!empty($context)) {
+      if (!isset($context['sandbox']['total'])) {
+        if (empty($list)) {
+          $query = $view->query->query();
+          if (!empty($query)) {
+            $context['sandbox']['total'] = $query->countQuery()->execute()->fetchField();
+          }
+          else {
+            if (empty($view->result)) {
+              $view->query->execute($view);
+            }
+            $context['sandbox']['total'] = $view->total_rows;
+          }
+        }
+        else {
+          $context['sandbox']['total'] = count($list);
+        }
+      }
+      if ($this->actionDefinition['pass_context']) {
+        $this->action->setContext($context);
       }
     }
 
@@ -217,6 +227,16 @@ class ViewsBulkOperationsActionProcessor {
   public function process() {
     $output = [];
 
+    // Check entity type for multi-type views like search_api index.
+    if (empty($this->entityType) && !empty($this->actionDefinition['type'])) {
+      foreach ($this->queue as $delta => $entity) {
+        if ($entity->getEntityTypeId() !== $this->actionDefinition['type']) {
+          $output[] = $this->t('Entity type not supported');
+          unset($this->queue[$delta]);
+        }
+      }
+    }
+
     // Check access.
     foreach ($this->queue as $delta => $entity) {
       if (!$this->action->access($entity, $this->user)) {
@@ -247,19 +267,14 @@ class ViewsBulkOperationsActionProcessor {
    * Get entity for processing.
    */
   public function getEntity($entity_data) {
-    $revision_id = NULL;
-
-    // If there are 3 items, vid will be last.
-    if (count($entity_data) === 3) {
-      $revision_id = array_pop($entity_data);
+    if (!isset($entity_data[4])) {
+      $entity_data[4] = FALSE;
     }
-
-    // The first two items will always be langcode and ID.
-    $id = array_pop($entity_data);
-    $langcode = array_pop($entity_data);
+    list($row_index, $langcode, $entity_type_id, $id, $revision_id) = $entity_data;
 
     // Load the entity or a specific revision depending on the given key.
-    $entity = $revision_id ? $this->entityStorage->loadRevision($revision_id) : $this->entityStorage->load($id);
+    $entityStorage = $this->entityTypeManager->getStorage($entity_type_id);
+    $entity = $revision_id ? $entityStorage->loadRevision($revision_id) : $entityStorage->load($id);
 
     if ($entity instanceof TranslatableInterface) {
       $entity = $entity->getTranslation($langcode);
@@ -269,22 +284,39 @@ class ViewsBulkOperationsActionProcessor {
   }
 
   /**
-   * Get entity translation from views row.
+   * Get entity from views row.
    *
    * @param \Drupal\views\ResultRow $row
    *   Views result row.
+   * @param string $relationship_id
+   *   Id of the view relationship.
    *
    * @return \Drupal\Core\Entity\FieldableEntityInterface
    *   The translated entity.
    */
-  public function getEntityTranslation(ResultRow $row) {
-    if ($row->_entity->isTranslatable()) {
-      $language_field = $this->entityType . '_field_data_langcode';
-      if ($row->_entity instanceof TranslatableInterface && isset($row->{$language_field})) {
-        return $row->_entity->getTranslation($row->{$language_field});
+  public function getEntityFromRow(ResultRow $row, $relationship_id) {
+
+    if ($relationship_id == 'none') {
+      if (!empty($row->_entity)) {
+        $entity = $row->_entity;
       }
     }
-    return $row->_entity;
+    elseif (isset($row->_relationship_entities[$relationship_id])) {
+      $entity = $row->_relationship_entities[$relationship_id];
+    }
+    else {
+      throw new \Exception('Unexpected view result row structure.');
+    }
+
+    if ($entity->isTranslatable()) {
+      // May not always be reliable.
+      $language_field = $entity->getEntityTypeId() . '_field_data_langcode';
+      if ($entity instanceof TranslatableInterface && isset($row->{$language_field})) {
+        return $entity->getTranslation($row->{$language_field});
+      }
+    }
+
+    return $entity;
   }
 
   /**
@@ -302,19 +334,15 @@ class ViewsBulkOperationsActionProcessor {
       $ids[$id] = $id;
     }
 
-    $base_table = $view->storage->get('base_table');
-    $alias = $view->query->tables[$base_table][$base_table]['alias'];
-    $view->build_info['query']->condition($alias . '.' . $view->storage->get('base_field'), $ids, 'in');
     $view->query->execute($view);
 
     // Filter result using the $list array.
-    $language_field = $this->entityType . '_field_data_langcode';
-    $selection = [];
+    $selected = [];
     foreach ($list as $item) {
-      $selection[$item[0]][$item[1]] = TRUE;
+      $selected[$item[0]] = $item[0];
     }
     foreach ($view->result as $delta => $row) {
-      if (isset($row->{$language_field}) && !isset($selection[$row->{$language_field}][$row->_entity->id()])) {
+      if (!isset($selected[$delta])) {
         unset($view->result[$delta]);
       }
     }
