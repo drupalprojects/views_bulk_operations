@@ -126,6 +126,9 @@ class ViewsBulkOperationsEvent extends Event {
    *   Entity getter information.
    */
   public function setEntityGetter(array $entityGetter) {
+    if (!isset($entityGetter['callable'])) {
+      throw new \Exception('Views Bulk Operations entity getter callable is not defined.');
+    }
     $this->entityGetter = $entityGetter;
   }
 

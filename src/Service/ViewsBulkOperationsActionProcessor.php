@@ -9,6 +9,7 @@ use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\views\ViewExecutable;
 use Drupal\views\ResultRow;
+use Drupal\Core\Entity\EntityInterface;
 
 /**
  * Defines VBO action processor.
@@ -227,6 +228,14 @@ class ViewsBulkOperationsActionProcessor {
   public function process() {
     $output = [];
 
+    // Check if all queue items are actually Drupal entities.
+    foreach ($this->queue as $delta => $entity) {
+      if (!($entity instanceof EntityInterface)) {
+        $output[] = $this->t('Skiped');
+        unset($this->queue[$delta]);
+      }
+    }
+
     // Check entity type for multi-type views like search_api index.
     if (empty($this->entityType) && !empty($this->actionDefinition['type'])) {
       foreach ($this->queue as $delta => $entity) {
@@ -294,7 +303,7 @@ class ViewsBulkOperationsActionProcessor {
    * @return \Drupal\Core\Entity\FieldableEntityInterface
    *   The translated entity.
    */
-  public function getEntityFromRow(ResultRow $row, $relationship_id) {
+  public static function getEntityFromRow(ResultRow $row, $relationship_id) {
 
     if ($relationship_id == 'none') {
       if (!empty($row->_entity)) {
