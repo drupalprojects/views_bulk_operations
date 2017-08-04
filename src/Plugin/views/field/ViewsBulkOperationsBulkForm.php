@@ -388,31 +388,34 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         '#attributes' => ['class' => ['action-state']],
       ];
 
+      // There are problems with AJAX on this form when adding
+      // new elements (Views issue), a workaround is to render
+      // all elements and show/hide them when needed.
+      $form['selected_actions'][$id]['preconfiguration'] = [
+        '#type' => 'fieldset',
+        '#title' => $this->t('Preconfiguration for "@action"', [
+          '@action' => $action['label'],
+        ]),
+        '#attributes' => [
+          'data-for' => $id,
+          'style' => empty($selected_actions[$id]) ? 'display: none' : NULL,
+        ],
+      ];
+
+      // Default label_override element.
+      $form['selected_actions'][$id]['preconfiguration']['label_override'] = [
+        '#type' => 'textfield',
+        '#title' => $this->t('Override label'),
+        '#description' => $this->t('Leave empty for the default label.'),
+        '#default_value' => isset($preconfiguration[$id]['label_override']) ? $preconfiguration[$id]['label_override'] : '',
+      ];
+
+      // Load preconfiguration form if available.
       if (method_exists($action['class'], 'buildPreConfigurationForm')) {
-
-        // There are problems with AJAX on this form when adding
-        // new elements (Views issue), a workaround is to render
-        // all elements and show/hide them when needed.
-        $form['selected_actions'][$id]['preconfiguration'] = [
-          '#type' => 'fieldset',
-          '#title' => $this->t('Preconfiguration for "@action"', [
-            '@action' => $action['label'],
-          ]),
-          '#attributes' => [
-            'data-for' => $id,
-            'style' => 'display: none',
-          ],
-        ];
-
-        // Load preconfiguration form.
-        $actionObject = $this->actionManager->createInstance($id);
-
-        if (!empty($selected_actions[$id])) {
-          unset($form['selected_actions'][$id]['preconfiguration']['#attributes']['style']);
-        }
         if (!isset($preconfiguration[$id])) {
           $preconfiguration[$id] = [];
         }
+        $actionObject = $this->actionManager->createInstance($id);
         $form['selected_actions'][$id]['preconfiguration'] = $actionObject->buildPreConfigurationForm($form['selected_actions'][$id]['preconfiguration'], $preconfiguration[$id], $form_state);
       }
     }
@@ -608,7 +611,12 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         continue;
       }
 
-      $options[$id] = $definition['label'];
+      if (!empty($this->options['preconfiguration'][$id]['label_override'])) {
+        $options[$id] = $this->options['preconfiguration'][$id]['label_override'];
+      }
+      else {
+        $options[$id] = $definition['label'];
+      }
     }
 
     return $options;
@@ -634,7 +642,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       $data = [
         'action_id' => $action_id,
-        'action_label' => $action['label'],
+        'action_label' => empty($this->options['preconfiguration'][$action_id]['label_override']) ? $action['label'] : $this->options['preconfiguration'][$action_id]['label_override'],
         'entity_type' => $this->getEntityTypeId(),
         'provider' => $this->getViewProvider(),
         'getter_data' => $this->entityGetter,

@@ -259,7 +259,7 @@ class ViewsBulkOperationsActionProcessor {
     if (empty($results)) {
       $count = count($this->queue);
       for ($i = 0; $i < $count; $i++) {
-        $output[] = $this->actionDefinition['label'];
+        $output[] = $this->viewData['action_label'];
       }
     }
     else {

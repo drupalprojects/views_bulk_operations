@@ -59,7 +59,7 @@ class ConfigureAction extends FormBase {
     $action = $this->actionManager->createInstance($view_data['action_id']);
     $definition = $this->actionManager->getDefinition($view_data['action_id']);
 
-    $form['#title'] = $this->t('Configure %action applied to the selection', ['%action' => $definition['label']]);
+    $form['#title'] = $this->t('Configure "%action" action applied to the selection', ['%action' => $view_data['action_label']]);
 
     // :D Make sure the submit button is at the bottom of the form
     // and is editale from the action buildConfigurationForm method.
