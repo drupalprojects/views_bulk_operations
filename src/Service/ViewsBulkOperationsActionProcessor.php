@@ -147,9 +147,7 @@ class ViewsBulkOperationsActionProcessor {
 
     // Get view results if required.
     if (empty($list)) {
-      if ($batch_size) {
-        $view->query->setLimit($batch_size);
-      }
+      $view->query->setLimit($batch_size);
       $view->query->setOffset($offset);
       $view->query->execute($view);
 
@@ -231,7 +229,7 @@ class ViewsBulkOperationsActionProcessor {
     // Check if all queue items are actually Drupal entities.
     foreach ($this->queue as $delta => $entity) {
       if (!($entity instanceof EntityInterface)) {
-        $output[] = $this->t('Skiped');
+        $output[] = $this->t('Skipped');
         unset($this->queue[$delta]);
       }
     }
