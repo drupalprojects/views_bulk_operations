@@ -8,7 +8,6 @@ use Drupal\views\Views;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\views\ViewExecutable;
-use Drupal\views\ResultRow;
 use Drupal\Core\Entity\EntityInterface;
 
 /**
@@ -54,18 +53,18 @@ class ViewsBulkOperationsActionProcessor {
   protected $action;
 
   /**
-   * Type of the processed entities.
-   *
-   * @var string
-   */
-  protected $entityType;
-
-  /**
-   * Data describing the view and item selection.
+   * View data from the bulk form.
    *
    * @var array
    */
-  protected $viewData;
+  protected $bulkFormData;
+
+  /**
+   * View data provider service.
+   *
+   * @var \Drupal\views_bulk_operations\ViewsbulkOperationsViewData
+   */
+  protected $viewDataService;
 
   /**
    * Array of entities that will be processed in the current batch.
@@ -77,7 +76,8 @@ class ViewsBulkOperationsActionProcessor {
   /**
    * Constructor.
    */
-  public function __construct(EntityTypeManagerInterface $entityTypeManager, ViewsBulkOperationsActionManager $actionManager, AccountProxyInterface $user) {
+  public function __construct(ViewsbulkOperationsViewData $viewDataService, EntityTypeManagerInterface $entityTypeManager, ViewsBulkOperationsActionManager $actionManager, AccountProxyInterface $user) {
+    $this->viewDataService = $viewDataService;
     $this->entityTypeManager = $entityTypeManager;
     $this->actionManager = $actionManager;
     $this->user = $user;
@@ -104,11 +104,8 @@ class ViewsBulkOperationsActionProcessor {
     // Set action context.
     $this->setActionContext($view_data);
 
-    // Set-up action processor.
-    $this->entityType = $view_data['entity_type'];
-
     // Set entire view data as object parameter for future reference.
-    $this->viewData = $view_data;
+    $this->bulkFormData = $view_data;
   }
 
   /**
@@ -122,7 +119,6 @@ class ViewsBulkOperationsActionProcessor {
     if (empty($list) || $this->actionDefinition['pass_view']) {
       $view = Views::getView($data['view_id']);
       $view->setDisplay($data['display_id']);
-      $view->get_total_rows = TRUE;
       if (!empty($data['arguments'])) {
         $view->setArguments($data['arguments']);
       }
@@ -152,11 +148,9 @@ class ViewsBulkOperationsActionProcessor {
       $view->query->execute($view);
 
       // Prepare result getter.
-      if (!empty($this->viewData['getter_data']['file'])) {
-        require_once $this->viewData['getter_data']['file'];
-      }
+      $this->viewDataService->init($view, $view->getDisplay(), $this->bulkFormData['relationship_id']);
       foreach ($view->result as $row) {
-        $this->queue[] = call_user_func($this->viewData['getter_data']['callable'], $row, $this->viewData['relationship_id']);
+        $this->queue[] = $this->viewDataService->getEntity($row);
       }
     }
     else {
@@ -235,7 +229,7 @@ class ViewsBulkOperationsActionProcessor {
     }
 
     // Check entity type for multi-type views like search_api index.
-    if (empty($this->entityType) && !empty($this->actionDefinition['type'])) {
+    if (!empty($this->actionDefinition['type'])) {
       foreach ($this->queue as $delta => $entity) {
         if ($entity->getEntityTypeId() !== $this->actionDefinition['type']) {
           $output[] = $this->t('Entity type not supported');
@@ -259,7 +253,7 @@ class ViewsBulkOperationsActionProcessor {
     if (empty($results)) {
       $count = count($this->queue);
       for ($i = 0; $i < $count; $i++) {
-        $output[] = $this->viewData['action_label'];
+        $output[] = $this->bulkFormData['action_label'];
       }
     }
     else {
@@ -285,42 +279,6 @@ class ViewsBulkOperationsActionProcessor {
 
     if ($entity instanceof TranslatableInterface) {
       $entity = $entity->getTranslation($langcode);
-    }
-
-    return $entity;
-  }
-
-  /**
-   * Get entity from views row.
-   *
-   * @param \Drupal\views\ResultRow $row
-   *   Views result row.
-   * @param string $relationship_id
-   *   Id of the view relationship.
-   *
-   * @return \Drupal\Core\Entity\FieldableEntityInterface
-   *   The translated entity.
-   */
-  public static function getEntityFromRow(ResultRow $row, $relationship_id) {
-
-    if ($relationship_id == 'none') {
-      if (!empty($row->_entity)) {
-        $entity = $row->_entity;
-      }
-    }
-    elseif (isset($row->_relationship_entities[$relationship_id])) {
-      $entity = $row->_relationship_entities[$relationship_id];
-    }
-    else {
-      throw new \Exception('Unexpected view result row structure.');
-    }
-
-    if ($entity->isTranslatable()) {
-      // May not always be reliable.
-      $language_field = $entity->getEntityTypeId() . '_field_data_langcode';
-      if ($entity instanceof TranslatableInterface && isset($row->{$language_field})) {
-        return $entity->getTranslation($row->{$language_field});
-      }
     }
 
     return $entity;

@@ -3,6 +3,7 @@
 namespace Drupal\views_bulk_operations\EventSubscriber;
 
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Drupal\views_bulk_operations\Service\ViewsbulkOperationsViewData;
 use Drupal\views_bulk_operations\ViewsBulkOperationsEvent;
 
 /**
@@ -15,6 +16,23 @@ class ViewsBulkOperationsEventSubscriber implements EventSubscriberInterface {
   // Subscribe to the VBO event with high priority
   // to prepopulate the event data.
   const PRIORITY = 999;
+
+  /**
+   * Object that gets the current view data.
+   *
+   * @var \Drupal\views_bulk_operations\ViewsbulkOperationsViewData
+   */
+  protected $viewData;
+
+  /**
+   * Object constructor.
+   *
+   * @param \Drupal\views_bulk_operations\Service\ViewsbulkOperationsViewData $viewData
+   *   The VBO View Data provider service.
+   */
+  public function __construct(ViewsbulkOperationsViewData $viewData) {
+    $this->viewData = $viewData;
+  }
 
   /**
    * {@inheritdoc}
@@ -35,8 +53,7 @@ class ViewsBulkOperationsEventSubscriber implements EventSubscriberInterface {
     if ($entity_type = $view_data['table']['entity type']) {
       $event->setEntityTypeIds([$entity_type]);
       $event->setEntityGetter([
-        'file' => __DIR__ . '/../Service/ViewsBulkOperationsActionProcessor.php',
-        'callable' => '\Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor::getEntityFromRow',
+        'callable' => [$this->viewData, 'getEntityDefault'],
       ]);
     }
   }
