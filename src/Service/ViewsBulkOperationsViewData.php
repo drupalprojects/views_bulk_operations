@@ -160,7 +160,7 @@ class ViewsbulkOperationsViewData {
       require_once $this->entityGetter['file'];
     }
     if (is_callable($this->entityGetter['callable'])) {
-      return call_user_func($this->entityGetter['callable'], $row, $this->relationship);
+      return call_user_func($this->entityGetter['callable'], $row, $this->relationship, $this->view);
     }
     else {
       if (is_array($this->entityGetter['callable'])) {
@@ -208,11 +208,14 @@ class ViewsbulkOperationsViewData {
    *   Views result row.
    * @param string $relationship_id
    *   Id of the view relationship.
+   * @param \Drupal\views\ViewExecutable $view
+   *   The current view object.
    *
    * @return \Drupal\Core\Entity\FieldableEntityInterface
    *   The translated entity.
    */
-  public function getEntityDefault(ResultRow $row, $relationship_id) {
+  public function getEntityDefault(ResultRow $row, $relationship_id, ViewExecutable $view) {
+    kdpm($view, 'R');
     if ($relationship_id == 'none') {
       if (!empty($row->_entity)) {
         $entity = $row->_entity;
