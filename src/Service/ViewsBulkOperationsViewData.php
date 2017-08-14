@@ -215,7 +215,6 @@ class ViewsbulkOperationsViewData {
    *   The translated entity.
    */
   public function getEntityDefault(ResultRow $row, $relationship_id, ViewExecutable $view) {
-    kdpm($view, 'R');
     if ($relationship_id == 'none') {
       if (!empty($row->_entity)) {
         $entity = $row->_entity;
