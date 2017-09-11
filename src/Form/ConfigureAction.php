@@ -72,6 +72,10 @@ class ConfigureAction extends FormBase {
       ],
     ];
 
+    if (method_exists($action, 'setContext')) {
+      $action->setContext($view_data);
+    }
+
     $form = $action->buildConfigurationForm($form, $form_state);
 
     return $form;
