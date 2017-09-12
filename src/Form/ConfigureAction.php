@@ -44,6 +44,7 @@ class ConfigureAction extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state, $view_id = NULL, $display_id = NULL) {
+
     $tempstore_name = 'views_bulk_operations_' . $view_id . '_' . $display_id;
     $tempstore = $this->tempStoreFactory->get($tempstore_name);
     $view_data = $tempstore->get($this->currentUser()->id());
@@ -53,8 +54,6 @@ class ConfigureAction extends FormBase {
     if (!isset($view_data['action_id'])) {
       return;
     }
-
-    $form_state->setStorage($view_data);
 
     $action = $this->actionManager->createInstance($view_data['action_id']);
     $definition = $this->actionManager->getDefinition($view_data['action_id']);
@@ -78,6 +77,10 @@ class ConfigureAction extends FormBase {
 
     $form = $action->buildConfigurationForm($form, $form_state);
 
+    $storage = $form_state->getStorage();
+    $storage['views_bulk_operations'] = $view_data;
+    $form_state->setStorage($storage);
+
     return $form;
   }
 
@@ -85,7 +88,9 @@ class ConfigureAction extends FormBase {
    * {@inheritdoc}
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
-    $view_data = $form_state->getStorage();
+    $storage = $form_state->getStorage();
+    $view_data = $storage['views_bulk_operations'];
+
     $action = $this->actionManager->createInstance($view_data['action_id']);
     if (method_exists($action, 'validateConfigurationForm')) {
       $action->validateConfigurationForm($form, $form_state);
@@ -96,7 +101,8 @@ class ConfigureAction extends FormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    $view_data = $form_state->getStorage();
+    $storage = $form_state->getStorage();
+    $view_data = $storage['views_bulk_operations'];
 
     $action = $this->actionManager->createInstance($view_data['action_id']);
     if (method_exists($action, 'submitConfigurationForm')) {
