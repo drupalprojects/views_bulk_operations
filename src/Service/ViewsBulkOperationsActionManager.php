@@ -16,6 +16,9 @@ class ViewsBulkOperationsActionManager extends ActionManager {
     $definitions = parent::getDefinitions();
     foreach ($definitions as $id => $definition) {
       $this->extendDefinition($definitions[$id]);
+      if (empty($definitions[$id])) {
+        unset($definitions[$id]);
+      }
     }
     return $definitions;
   }
@@ -36,6 +39,13 @@ class ViewsBulkOperationsActionManager extends ActionManager {
    *   The plugin definition.
    */
   protected function extendDefinition(array &$definition) {
+    // Remove uncompatible actions.
+    $uncompatible = ['node_delete_action'];
+    if (in_array($definition['id'], $uncompatible)) {
+      $definition = NULL;
+      return;
+    }
+
     // Merge in defaults.
     $definition += [
       'confirm' => FALSE,

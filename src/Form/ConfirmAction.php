@@ -84,10 +84,15 @@ class ConfirmAction extends FormBase {
       }
     }
 
-    $form['#title'] = $this->t('Are you sure you wish to perform "%action" action on %count entities?', [
-      '%action' => $view_data['action_label'],
-      '%count' => $count,
-    ]);
+    $form['#title'] = $this->formatPlural(
+      $count,
+      'Are you sure you wish to perform "%action" action on 1 entity?',
+      'Are you sure you wish to perform "%action" action on %count entities?',
+      [
+        '%action' => $view_data['action_label'],
+        '%count' => $count,
+      ]
+    );
 
     $form['actions']['submit'] = [
       '#type' => 'submit',
