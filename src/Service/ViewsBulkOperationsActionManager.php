@@ -39,9 +39,9 @@ class ViewsBulkOperationsActionManager extends ActionManager {
    *   The plugin definition.
    */
   protected function extendDefinition(array &$definition) {
-    // Remove uncompatible actions.
-    $uncompatible = ['node_delete_action'];
-    if (in_array($definition['id'], $uncompatible)) {
+    // Remove incompatible actions.
+    $incompatible = ['node_delete_action'];
+    if (in_array($definition['id'], $incompatible)) {
       $definition = NULL;
       return;
     }
