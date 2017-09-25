@@ -12,6 +12,8 @@ use Drupal\views\Entity\View;
  */
 class ViewsBulkOperationsBatchTest extends UnitTestCase {
 
+  public static $modules = array('node', 'developer_console');
+
   /**
    * {@inheritdoc}
    */
@@ -28,7 +30,7 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
    * @return \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor
    *   A mocked action processor.
    */
-  public function getViewsBulkOperationsActionProcessorStub() {
+  public function getViewsBulkOperationsActionProcessorStub($entities_count) {
     $actionProcessor = $this->getMockBuilder('Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor')
       ->disableOriginalConstructor()
       ->getMock();
@@ -37,10 +39,14 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
       ->will($this->returnValue(new \stdClass()));
 
     $actionProcessor->expects($this->any())
+      ->method('populateQueue')
+      ->will($this->returnValue($entities_count));
+
+    $actionProcessor->expects($this->any())
       ->method('process')
-      ->will($this->returnCallback(function ($entities) {
+      ->will($this->returnCallback(function () use ($entities_count) {
         $return = [];
-        for ($i = 0; $i < count($entities); $i++) {
+        for ($i = 0; $i < $entities_count; $i++) {
           $return[] = 'Some action';
         }
         return $return;
@@ -76,7 +82,7 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
     $batch_size = 2;
     $entities_count = 10;
 
-    $this->container->set('views_bulk_operations.processor', $this->getViewsBulkOperationsActionProcessorStub());
+    $this->container->set('views_bulk_operations.processor', $this->getViewsBulkOperationsActionProcessorStub($batch_size));
 
     $view = new View(['id' => 'test_view'], 'view');
     $view_storage = $this->getMockBuilder('Drupal\Core\Config\Entity\ConfigEntityStorage')
@@ -126,7 +132,6 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
       'sandbox' => [
         'processed' => 0,
         'total' => $entities_count,
-        'results' => [],
       ],
     ];
 
@@ -143,10 +148,10 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
    */
   public function testFinished() {
     TestViewsBulkOperationsBatch::finished(TRUE, ['Some operation', 'Some operation'], []);
-    $this->assertEquals(TestViewsBulkOperationsBatch::message(), 'Some operation operation performed on 2 results.');
+    $this->assertEquals(TestViewsBulkOperationsBatch::message(), 'Action processing results: Some operation (2).');
 
     TestViewsBulkOperationsBatch::finished(TRUE, ['Some operation1', 'Some operation2'], []);
-    $this->assertEquals(TestViewsBulkOperationsBatch::message(), 'Operations performed: Some operation1: 1, Some operation2: 1.');
+    $this->assertEquals(TestViewsBulkOperationsBatch::message(), 'Action processing results: Some operation1 (1), Some operation2 (1).');
   }
 
 }
