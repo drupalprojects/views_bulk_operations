@@ -12,7 +12,12 @@ use Drupal\views\Entity\View;
  */
 class ViewsBulkOperationsBatchTest extends UnitTestCase {
 
-  public static $modules = array('node', 'developer_console');
+  /**
+   * Modules to install.
+   *
+   * @var array
+   */
+  public static $modules = array('node');
 
   /**
    * {@inheritdoc}
