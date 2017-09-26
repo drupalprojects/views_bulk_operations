@@ -21,6 +21,7 @@ use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
 
 /**
  * Defines a actions-based bulk operation form element.
@@ -639,22 +640,15 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         // Populate and process queue.
         $this->actionProcessor->initialize($data);
         if ($this->actionProcessor->populateQueue($list, $data)) {
-          $results = $this->actionProcessor->process();
-          $count = count($results);
+          $batch_results = $this->actionProcessor->process();
+          $count = count($batch_results);
         }
 
-        if ($count) {
-          drupal_set_message($this->formatPlural($count, '%action was applied to @count item.', '%action was applied to %count items.', [
-            '%action' => $action['label'],
-            '%count' => $count,
-          ]));
+        $results = [];
+        foreach ($batch_results as $result) {
+          $results[] = (string) $result;
         }
-        else {
-          drupal_set_message($this->t('%action was executed but no items were processed.', [
-            '%action' => $action['label'],
-          ]));
-        }
-
+        ViewsBulkOperationsBatch::finished(TRUE, $results, []);
       }
     }
   }
