@@ -17,7 +17,7 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
    *
    * @var array
    */
-  public static $modules = array('node');
+  public static $modules = ['node'];
 
   /**
    * {@inheritdoc}

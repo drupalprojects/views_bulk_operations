@@ -151,7 +151,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $this->actions = [];
     $entity_types = $this->viewData->getEntityTypeIds();
 
-    // Get actions only if ther are any entity types set for the view.
+    // Get actions only if there are any entity types set for the view.
     if (!empty($entity_types)) {
       foreach ($this->actionManager->getDefinitions() as $id => $definition) {
         if (empty($definition['type']) || in_array($definition['type'], $entity_types, TRUE)) {
@@ -243,7 +243,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * {@inheritdoc}
    */
   public function buildOptionsForm(&$form, FormStateInterface $form_state) {
-    // If the view type is not supported, supress form display.
+    // If the view type is not supported, suppress form display.
     // Also display information note to the user.
     if (empty($this->actions)) {
       $form = [
@@ -633,7 +633,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
       // Or process rows here.
       else {
-        $count = 0;
         $list = $data['list'];
         unset($data['list']);
 
@@ -641,7 +640,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         $this->actionProcessor->initialize($data);
         if ($this->actionProcessor->populateQueue($list, $data)) {
           $batch_results = $this->actionProcessor->process();
-          $count = count($batch_results);
         }
 
         $results = [];
@@ -710,6 +708,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * @param bool $use_revision
    *   Whether the revision id should be added to the bulk form key. This should
    *   be set to TRUE only if the view is listing entity revisions.
+   * @param int $row_index
+   *   Index of the views row that contains the entity.
    *
    * @return string
    *   The bulk form key representing the entity's id, language and revision (if

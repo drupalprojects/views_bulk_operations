@@ -23,7 +23,7 @@
     var uiElement = $(this);
     uiElement.find('.action-state').each(function () {
       var matches = $(this).attr('name').match(/.*\[.*?\]\[(.*?)\]\[.*?\]/);
-      if (typeof(matches[1]) != 'undefined') {
+      if (typeof (matches[1]) != 'undefined') {
         var preconfigurationElement = uiElement.find('*[data-for="' + matches[1] + '"]');
         $(this).change(function (event) {
           if ($(this).is(':checked')) {

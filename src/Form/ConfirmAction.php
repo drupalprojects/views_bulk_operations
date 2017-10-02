@@ -57,8 +57,6 @@ class ConfirmAction extends FormBase {
 
     $form_state->setStorage($view_data);
 
-    $definition = $this->actionManager->getDefinition($view_data['action_id']);
-
     // Get count of entities to be processed.
     if (!empty($view_data['list'])) {
       $count = count($view_data['list']);

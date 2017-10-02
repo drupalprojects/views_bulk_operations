@@ -72,6 +72,8 @@ class ViewsbulkOperationsViewData {
    *
    * @param \Drupal\views\ViewExecutable $view
    *   The view object.
+   * @param \Drupal\views\Plugin\views\display\DisplayPluginBase $display
+   *   The current display plugin.
    * @param string $relationship
    *   Relationship ID.
    */

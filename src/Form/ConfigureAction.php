@@ -56,7 +56,6 @@ class ConfigureAction extends FormBase {
     }
 
     $action = $this->actionManager->createInstance($view_data['action_id']);
-    $definition = $this->actionManager->getDefinition($view_data['action_id']);
 
     $form['#title'] = $this->t('Configure "%action" action applied to the selection', ['%action' => $view_data['action_label']]);
 

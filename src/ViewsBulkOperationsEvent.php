@@ -52,6 +52,10 @@ class ViewsBulkOperationsEvent extends Event {
    *
    * @param string $provider
    *   The provider of the current view.
+   * @param array $viewData
+   *   The views data of the current view.
+   * @param \Drupal\views\ViewExecutable $view
+   *   The current view.
    */
   public function __construct($provider, array $viewData, ViewExecutable $view) {
     $this->provider = $provider;

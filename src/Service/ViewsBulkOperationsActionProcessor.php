@@ -271,7 +271,7 @@ class ViewsBulkOperationsActionProcessor {
     if (!isset($entity_data[4])) {
       $entity_data[4] = FALSE;
     }
-    list($row_index, $langcode, $entity_type_id, $id, $revision_id) = $entity_data;
+    list(, $langcode, $entity_type_id, $id, $revision_id) = $entity_data;
 
     // Load the entity or a specific revision depending on the given key.
     $entityStorage = $this->entityTypeManager->getStorage($entity_type_id);
@@ -293,12 +293,6 @@ class ViewsBulkOperationsActionProcessor {
    *   User selection data.
    */
   protected function getViewResult(ViewExecutable $view, array $list) {
-    $ids = [];
-    foreach ($this->queue as $entity) {
-      $id = $entity->id();
-      $ids[$id] = $id;
-    }
-
     $view->query->execute($view);
 
     // Filter result using the $list array.
