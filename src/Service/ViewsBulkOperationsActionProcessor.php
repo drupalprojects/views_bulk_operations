@@ -131,10 +131,11 @@ class ViewsBulkOperationsActionProcessor {
     // Determine batch size and offset.
     if (!empty($context)) {
       $batch_size = empty($data['batch_size']) ? 10 : $data['batch_size'];
-      if (!isset($context['sandbox']['offset'])) {
-        $context['sandbox']['offset'] = 0;
+      if (!isset($context['sandbox']['current_batch'])) {
+        $context['sandbox']['current_batch'] = 0;
       }
-      $offset = &$context['sandbox']['offset'];
+      $current_batch = &$context['sandbox']['current_batch'];
+      $offset = $current_batch * $batch_size;
     }
     else {
       $offset = 0;
@@ -143,6 +144,14 @@ class ViewsBulkOperationsActionProcessor {
 
     // Get view results if required.
     if (empty($list)) {
+      $view->setCurrentPage($current_batch);
+      $view->setItemsPerPage($batch_size);
+
+      // If the view doesn't start from the first result,
+      // move the offset.
+      if ($view_offset = $view->pager->getOffset()) {
+        $offset += $view_offset;
+      }
       $view->query->setLimit($batch_size);
       $view->query->setOffset($offset);
       $view->query->execute($view);
@@ -173,7 +182,7 @@ class ViewsBulkOperationsActionProcessor {
         if (empty($list)) {
           $query = $view->query->query();
           if (!empty($query)) {
-            $context['sandbox']['total'] = $query->countQuery()->execute()->fetchField();
+            $context['sandbox']['total'] = $this->viewDataService->getTotalResults();
           }
           else {
             if (empty($view->result)) {
@@ -192,7 +201,7 @@ class ViewsBulkOperationsActionProcessor {
     }
 
     if ($batch_size) {
-      $offset += $batch_size;
+      $current_batch++;
     }
 
     if ($this->actionDefinition['pass_view']) {

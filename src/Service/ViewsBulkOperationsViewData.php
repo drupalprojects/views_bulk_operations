@@ -198,6 +198,10 @@ class ViewsbulkOperationsViewData {
       $total_results = $this->view->total_rows;
     }
 
+    if ($offset = $this->view->pager->getOffset()) {
+      $total_results -= $offset;
+    }
+
     return $total_results;
   }
 
