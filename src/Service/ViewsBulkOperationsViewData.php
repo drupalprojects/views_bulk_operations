@@ -234,8 +234,28 @@ class ViewsbulkOperationsViewData {
     }
 
     if ($entity->isTranslatable()) {
-      // May not always be reliable.
-      $language_field = $entity->getEntityTypeId() . '_field_data_langcode';
+
+      // Try to find a field alias for the langcode.
+      // Assumption: translatable entities always
+      // have a langcode key.
+      $language_field = '';
+      $langcode_key = $entity->getEntityType()->getKey('langcode');
+      $base_table = $view->storage->get('base_table');
+      foreach ($view->query->fields as $field) {
+        if (
+          $field['field'] === $langcode_key && (
+            is_null($field['base_table']) ||
+            $field['base_table'] === $base_table
+          )
+        ) {
+          $language_field = $field['alias'];
+          break;
+        }
+      }
+      if (!$language_field) {
+        $language_field = $langcode_key;
+      }
+
       if ($entity instanceof TranslatableInterface && isset($row->{$language_field})) {
         return $entity->getTranslation($row->{$language_field});
       }
