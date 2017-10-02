@@ -26,7 +26,6 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
    * Tests the VBO bulk form.
    */
   public function testViewsBulkOperationsBulkForm() {
-    $node_storage = $this->container->get('entity.manager')->getStorage('node');
 
     $this->drupalCreateContentType(['type' => 'page']);
     $nodes = [];
@@ -48,7 +47,7 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
 
     // Test that the views edit header appears first.
     $first_form_element = $this->xpath('//form/div[1][@id = :id]', [':id' => 'edit-header']);
-    $result = $this->assertTrue($first_form_element, 'The views form edit header appears first.');
+    $this->assertTrue($first_form_element, 'The views form edit header appears first.');
 
     $this->assertFieldById('edit-action', NULL, 'The action select field appears.');
 
