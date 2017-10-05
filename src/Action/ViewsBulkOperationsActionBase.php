@@ -4,6 +4,7 @@ namespace Drupal\views_bulk_operations\Action;
 
 use Drupal\Core\Action\ActionBase;
 use Drupal\Component\Plugin\ConfigurablePluginInterface;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\views\ViewExecutable;
 
 /**
@@ -73,6 +74,39 @@ abstract class ViewsBulkOperationsActionBase extends ActionBase implements Views
    */
   public function defaultConfiguration() {
     return [];
+  }
+
+  /**
+   * Default configuration form validator.
+   *
+   * This method will be needed if a child class will implement
+   * \Drupal\Core\Plugin\PluginFormInterface. Code saver.
+   *
+   * @param array &$form
+   *   Form array.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state object.
+   */
+  public function validateConfigurationForm(array &$form, FormStateInterface $form_state) {
+
+  }
+
+  /**
+   * Default configuration form submit handler.
+   *
+   * This method will be needed if a child class will implement
+   * \Drupal\Core\Plugin\PluginFormInterface. Code saver.
+   *
+   * @param array &$form
+   *   Form array.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state object.
+   */
+  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
+    $form_state->cleanValues();
+    foreach ($form_state->getValues() as $key => $value) {
+      $this->configuration[$key] = $value;
+    }
   }
 
   /**
