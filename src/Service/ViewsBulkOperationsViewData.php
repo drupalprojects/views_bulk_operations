@@ -244,7 +244,7 @@ class ViewsbulkOperationsViewData {
       foreach ($view->query->fields as $field) {
         if (
           $field['field'] === $langcode_key && (
-            is_null($field['base_table']) ||
+            empty($field['base_table']) ||
             $field['base_table'] === $base_table
           )
         ) {
