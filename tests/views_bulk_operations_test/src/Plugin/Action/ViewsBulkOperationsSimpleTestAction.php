@@ -9,12 +9,12 @@ use Drupal\Core\Session\AccountInterface;
  * Action for test purposes only.
  *
  * @Action(
- *   id = "views_bulk_operations_test_action",
- *   label = @Translation("VBO test action"),
+ *   id = "views_bulk_operations_simple_test_action",
+ *   label = @Translation("VBO simple test action"),
  *   type = "node"
  * )
  */
-class ViewsBulkOperationsTestAction extends ViewsBulkOperationsActionBase {
+class ViewsBulkOperationsSimpleTestAction extends ViewsBulkOperationsActionBase {
 
   /**
    * {@inheritdoc}
