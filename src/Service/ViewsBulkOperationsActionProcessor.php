@@ -164,15 +164,18 @@ class ViewsBulkOperationsActionProcessor {
     }
     else {
       if ($batch_size) {
-        $list = array_slice($list, $offset, $batch_size);
+        $batch_list = array_slice($list, $offset, $batch_size);
       }
-      foreach ($list as $item) {
+      else {
+        $batch_list = $list;
+      }
+      foreach ($batch_list as $item) {
         $this->queue[] = $this->getEntity($item);
       }
 
       // Get view rows if required.
       if ($this->actionDefinition['pass_view']) {
-        $this->getViewResult($view, $list);
+        $this->getViewResult($view, $batch_list);
       }
     }
 
