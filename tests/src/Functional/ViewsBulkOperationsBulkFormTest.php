@@ -54,12 +54,15 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
    * After checking if we're on a Batch API page,
    * the iterations are executed, the finished page is opened
    * and browser redirects to the final destination.
+   *
+   * NOTE: As of Drupal 8.4 Functional test automatically redirects user through
+   * all Batch API pages, so this function is not longer needed.
    */
   protected function assertBatchProcess() {
     // Get the current batch ID.
     $current_url = $this->getUrl();
     $q = substr($current_url, strrpos($current_url, '/') + 1);
-    $this->assertEquals(substr($q, 0, 6), 'batch?', 'We are on a Batch API page.');
+    $this->assertEquals('batch?', substr($q, 0, 6), 'We are on a Batch API page.');
 
     preg_match('#id=([0-9]+)#', $q, $matches);
     $batch_id = $matches[1];
@@ -168,10 +171,8 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
     $confirm_button_value = t('Execute action');
     $this->drupalPostForm(NULL, [], t('Execute action'));
 
-    // Check if we're on the Batch execution page.
-    $this->assertBatchProcess();
-
-    // If all went well, the page should display results.
+    // If all went well and Batch API did its job,
+    // the next page should display results.
     $testViewConfig = \Drupal::service('config.factory')->get('views.view.views_bulk_operations_test_advanced');
     $configData = $testViewConfig->getRawData();
     $preconfig_setting = $configData['display']['default']['display_options']['fields']['views_bulk_operations_bulk_form']['preconfiguration']['views_bulk_operations_advanced_test_action']['test_preconfig'];
