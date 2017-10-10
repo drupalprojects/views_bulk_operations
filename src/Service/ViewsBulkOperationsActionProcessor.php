@@ -138,8 +138,9 @@ class ViewsBulkOperationsActionProcessor {
       $offset = $current_batch * $batch_size;
     }
     else {
-      $offset = 0;
       $batch_size = 0;
+      $current_batch = 0;
+      $offset = 0;
     }
 
     // Get view results if required.

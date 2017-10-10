@@ -93,18 +93,20 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
    */
   public function testViewsBulkOperationsBulkFormSimple() {
 
+    $assertSession = $this->assertSession();
+
     $this->drupalGet('views-bulk-operations-test');
 
     // Test that the views edit header appears first.
     $first_form_element = $this->xpath('//form/div[1][@id = :id]', [':id' => 'edit-header']);
     $this->assertTrue($first_form_element, 'The views form edit header appears first.');
 
-    $this->assertFieldById('edit-action', NULL, 'The action select field appears.');
+    $assertSession->fieldExists('edit-action', NULL, 'The action select field appears.');
 
     // Make sure a checkbox appears on all rows.
     $edit = [];
-    for ($i = 0; $i < 10; $i++) {
-      $this->assertFieldById('edit-views-bulk-operations-bulk-form-' . $i, NULL, format_string('The checkbox on row @row appears.', ['@row' => $i]));
+    for ($i = 0; $i < 4; $i++) {
+      $assertSession->fieldExists('edit-views-bulk-operations-bulk-form-' . $i, NULL, format_string('The checkbox on row @row appears.', ['@row' => $i]));
     }
 
     // Log in as a user with 'edit any page content' permission
@@ -116,7 +118,7 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
     $edit = [
       'action' => 'views_bulk_operations_simple_test_action',
     ];
-    $selected = [3, 5, 7];
+    $selected = [0, 2, 3];
     foreach ($selected as $index) {
       $edit["views_bulk_operations_bulk_form[$index]"] = TRUE;
     }
@@ -127,11 +129,28 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
     $preconfig_setting = $configData['display']['default']['display_options']['fields']['views_bulk_operations_bulk_form']['preconfiguration']['views_bulk_operations_simple_test_action']['preconfig'];
 
     foreach ($selected as $index) {
-      $this->assertText(sprintf('Test action (preconfig: %s, label: %s)',
-        $preconfig_setting,
-        $this->testNodes[$index]->label()
-      ));
+      $assertSession->pageTextContains(
+        sprintf('Test action (preconfig: %s, label: %s)',
+          $preconfig_setting,
+          $this->testNodes[$index]->label()
+        ),
+        sprintf('Action has been executed on node "%s".',
+          $this->testNodes[$index]->label()
+        )
+      );
     }
+
+    // Test the select all functionality.
+    $edit = [
+      'action' => 'views_bulk_operations_simple_test_action',
+      'select_all' => 1,
+    ];
+    $this->drupalPostForm(NULL, $edit, t('Apply to selected items'));
+
+    $assertSession->pageTextContains(
+      sprintf('Action processing results: Test (%d).', count($this->testNodes)),
+      sprintf('Action has been executed on %d nodes.', count($this->testNodes))
+    );
 
   }
 
@@ -141,6 +160,9 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
    * Uses the ViewsBulkOperationsAdvancedTestAction.
    */
   public function testViewsBulkOperationsBulkFormAdvanced() {
+
+    $assertSession = $this->assertSession();
+
     // Log in as a user with 'edit any page content' permission
     // to have access to perform the test operation.
     $admin_user = $this->drupalCreateUser(['edit any page content']);
@@ -158,7 +180,7 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
 
     // Check if configuration form is open and contains the
     // test_config field.
-    $this->assertFieldById('edit-test-config', NULL, 'The action select field appears.');
+    $assertSession->fieldExists('edit-test-config', NULL, 'The action select field appears.');
 
     $config_value = 'test value';
     $edit = [
@@ -180,7 +202,7 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
     // NOTE: The view pager has an offset set on this view, so checkbox
     // indexes are not equal to test nodes array keys. Hence the $index + 1.
     foreach ($selected as $index) {
-      $this->assertText(sprintf('Test action (preconfig: %s, config: %s, label: %s)',
+      $assertSession->pageTextContains(sprintf('Test action (preconfig: %s, config: %s, label: %s)',
         $preconfig_setting,
         $config_value,
         $this->testNodes[$index + 1]->label()
