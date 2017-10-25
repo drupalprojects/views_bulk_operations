@@ -22,6 +22,7 @@ use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
+use Drupal\Core\Url;
 
 /**
  * Defines a actions-based bulk operation form element.
@@ -622,7 +623,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           $data['exposed_input'] = $this->view->getExposedInput();
         }
         $data['batch_size'] = $this->options['batch_size'];
-        $data['redirect_uri'] = $this->getDestinationArray();
+        $data['redirect_url'] = Url::createFromRequest(\Drupal::request());
 
         $this->userTempStore->set($this->currentUser->id(), $data);
 

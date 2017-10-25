@@ -9,7 +9,6 @@ use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Action\ActionManager;
 use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
 use Drupal\views\Views;
-use Drupal\Core\Url;
 
 /**
  * Action configuration form.
@@ -109,7 +108,7 @@ class ConfirmAction extends FormBase {
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $view_data = $form_state->getStorage();
 
-    $form_state->setRedirectUrl(Url::fromUserInput($view_data['redirect_uri']['destination']));
+    $form_state->setRedirectUrl($view_data['redirect_url']);
 
     $batch = ViewsBulkOperationsBatch::getBatch($view_data);
 

@@ -8,7 +8,6 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
 use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
-use Drupal\Core\Url;
 
 /**
  * Action configuration form.
@@ -120,14 +119,12 @@ class ConfigureAction extends FormBase {
       $form_state->setRedirect($definition['confirm_form_route_name'], [
         'view_id' => $view_data['view_id'],
         'display_id' => $view_data['display_id'],
-      ], [
-        'query' => $view_data['redirect_uri'],
       ]);
     }
     else {
       // Execute batch process.
       $batch = ViewsBulkOperationsBatch::getBatch($view_data);
-      $form_state->setRedirectUrl(Url::fromUserInput($view_data['redirect_uri']['destination']));
+      $form_state->setRedirectUrl($view_data['redirect_url']);
 
       $this->tempStoreFactory->get($view_data['tempstore_name'])->delete($this->currentUser()->id());
 
