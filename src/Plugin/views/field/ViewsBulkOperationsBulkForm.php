@@ -4,7 +4,6 @@ namespace Drupal\views_bulk_operations\Plugin\views\field;
 
 use Drupal\Core\Cache\CacheableDependencyInterface;
 use Drupal\Core\Entity\EntityInterface;
-use Drupal\Core\Entity\EntityManagerInterface;
 use Drupal\Core\Entity\RevisionableInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
@@ -21,7 +20,6 @@ use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
 use Drupal\Core\Url;
 
 /**
@@ -43,27 +41,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   protected $entityManager;
 
   /**
-   * The action storage.
-   *
-   * @var \Drupal\Core\Entity\EntityStorageInterface
-   */
-  protected $actionStorage;
-
-  /**
-   * An array of actions that can be executed.
-   *
-   * @var \Drupal\system\ActionConfigEntityInterface[]
-   */
-  protected $actions = [];
-
-  /**
-   * Views row entity getter callable.
-   *
-   * @var string
-   */
-  protected $entityGetter;
-
-  /**
    * The language manager.
    *
    * @var \Drupal\Core\Language\LanguageManagerInterface
@@ -71,19 +48,53 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   protected $languageManager;
 
   /**
-   * Entity translation renderers.
-   *
-   * @var array
-   *   Array of renderers for each used entity types.
-   */
-  protected $entityTranslationRenderer;
-
-  /**
    * Object that gets the current view data.
    *
    * @var \Drupal\views_bulk_operations\ViewsbulkOperationsViewData
    */
   protected $viewData;
+
+  /**
+   * Views Bulk Operations action manager.
+   *
+   * @var \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager
+   */
+  protected $actionManager;
+
+  /**
+   * Views Bulk Operations action processor.
+   *
+   * @var \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor
+   */
+  protected $actionProcessor;
+
+  /**
+   * User private temporary storage factory.
+   *
+   * @var \Drupal\user\PrivateTempStoreFactory
+   */
+  protected $tempStoreFactory;
+
+  /**
+   * The current user object.
+   *
+   * @var \Drupal\Core\Session\AccountInterface
+   */
+  protected $currentUser;
+
+  /**
+   * An array of actions that can be executed.
+   *
+   * @var array
+   */
+  protected $actions = [];
+
+  /**
+   * The current user temporary storage.
+   *
+   * @var \Drupal\user\PrivateTempStore
+   */
+  protected $userTempStore;
 
   /**
    * Constructs a new BulkForm object.
@@ -94,8 +105,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    *   The plugin ID for the plugin instance.
    * @param mixed $plugin_definition
    *   The plugin implementation definition.
-   * @param \Drupal\Core\Entity\EntityManagerInterface $entityManager
-   *   The entity manager.
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
    *   The language manager.
    * @param \Drupal\views_bulk_operations\Service\ViewsbulkOperationsViewData $viewData
@@ -109,10 +118,9 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * @param \Drupal\Core\Session\AccountInterface $currentUser
    *   The current user object.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityManagerInterface $entityManager, LanguageManagerInterface $language_manager, ViewsbulkOperationsViewData $viewData, ViewsBulkOperationsActionManager $actionManager, ViewsBulkOperationsActionProcessor $actionProcessor, PrivateTempStoreFactory $tempStoreFactory, AccountInterface $currentUser) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, LanguageManagerInterface $language_manager, ViewsbulkOperationsViewData $viewData, ViewsBulkOperationsActionManager $actionManager, ViewsBulkOperationsActionProcessor $actionProcessor, PrivateTempStoreFactory $tempStoreFactory, AccountInterface $currentUser) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
-    $this->entityManager = $entityManager;
     $this->languageManager = $language_manager;
     $this->viewData = $viewData;
     $this->actionManager = $actionManager;
@@ -129,7 +137,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $container->get('entity.manager'),
       $container->get('language_manager'),
       $container->get('views_bulk_operations.data'),
       $container->get('plugin.manager.views_bulk_operations_action'),
@@ -417,8 +424,9 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $use_revision = array_key_exists('revision', $this->view->getQuery()->getEntityTableInfo());
 
     // Only add the bulk form options and buttons if
-    // there are results and actions are selected.
-    if (!empty($this->view->result) && !empty(array_filter($this->options['selected_actions']))) {
+    // there are results and any actions are available.
+    $action_options = $this->getBulkOptions();
+    if (!empty($this->view->result) && !empty($action_options)) {
       // Render checkboxes for all rows.
       $form[$this->options['id']]['#tree'] = TRUE;
       foreach ($this->view->result as $row_index => $row) {
@@ -456,7 +464,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       $form['header'][$this->options['id']]['action'] = [
         '#type' => 'select',
         '#title' => $this->options['action_title'],
-        '#options' => $this->getBulkOptions(),
+        '#options' => $action_options,
       ];
 
       // Add AJAX functionality if actions are configurable through this form.
@@ -572,6 +580,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         'list' => [],
         'view_id' => $this->view->id(),
         'display_id' => $this->view->current_display,
+        'batch' => $this->options['batch'],
       ];
 
       if (!$form_state->getValue('select_all')) {
@@ -634,20 +643,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
       // Or process rows here.
       else {
-        $list = $data['list'];
-        unset($data['list']);
-
-        // Populate and process queue.
-        $this->actionProcessor->initialize($data);
-        if ($this->actionProcessor->populateQueue($list, $data)) {
-          $batch_results = $this->actionProcessor->process();
-        }
-
-        $results = [];
-        foreach ($batch_results as $result) {
-          $results[] = (string) $result;
-        }
-        ViewsBulkOperationsBatch::finished(TRUE, $results, []);
+        $this->actionProcessor->executeProcessing($data);
       }
     }
   }

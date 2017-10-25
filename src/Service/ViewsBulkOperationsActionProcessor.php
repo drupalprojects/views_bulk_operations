@@ -9,6 +9,7 @@ use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\views\ViewExecutable;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
 
 /**
  * Defines VBO action processor.
@@ -275,6 +276,35 @@ class ViewsBulkOperationsActionProcessor {
       }
     }
     return $output;
+  }
+
+  /**
+   * Helper function for processing results from view data.
+   *
+   * @param array $data
+   *   Data concerning the view that will be processed.
+   */
+  public function executeProcessing(array $data) {
+    if ($data['batch']) {
+      $batch = ViewsBulkOperationsBatch::getBatch($data);
+      batch_set($batch);
+    }
+    else {
+      $list = $data['list'];
+      unset($data['list']);
+
+      // Populate and process queue.
+      $this->initialize($data);
+      if ($this->populateQueue($list, $data)) {
+        $batch_results = $this->process();
+      }
+
+      $results = [];
+      foreach ($batch_results as $result) {
+        $results[] = (string) $result;
+      }
+      ViewsBulkOperationsBatch::finished(TRUE, $results, []);
+    }
   }
 
   /**

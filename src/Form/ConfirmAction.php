@@ -6,8 +6,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\user\PrivateTempStoreFactory;
-use Drupal\Core\Action\ActionManager;
-use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
+use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
+use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
 use Drupal\views\Views;
 
 /**
@@ -16,11 +16,40 @@ use Drupal\views\Views;
 class ConfirmAction extends FormBase {
 
   /**
-   * Constructor.
+   * User private temporary storage factory.
+   *
+   * @var \Drupal\user\PrivateTempStoreFactory
    */
-  public function __construct(PrivateTempStoreFactory $tempStoreFactory, ActionManager $actionManager) {
+  protected $tempStoreFactory;
+
+  /**
+   * Views Bulk Operations action manager.
+   *
+   * @var \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager
+   */
+  protected $actionManager;
+
+  /**
+   * Views Bulk Operations action processor.
+   *
+   * @var \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor
+   */
+  protected $actionProcessor;
+
+  /**
+   * Constructor.
+   *
+   * @param \Drupal\user\PrivateTempStoreFactory $tempStoreFactory
+   *   User private temporary storage factory.
+   * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager $actionManager
+   *   Extended action manager object.
+   * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor $actionProcessor
+   *   Views Bulk Operations action processor.
+   */
+  public function __construct(PrivateTempStoreFactory $tempStoreFactory, ViewsBulkOperationsActionManager $actionManager, ViewsBulkOperationsActionProcessor $actionProcessor) {
     $this->tempStoreFactory = $tempStoreFactory;
     $this->actionManager = $actionManager;
+    $this->actionProcessor = $actionProcessor;
   }
 
   /**
@@ -29,7 +58,8 @@ class ConfirmAction extends FormBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('user.private_tempstore'),
-      $container->get('plugin.manager.views_bulk_operations_action')
+      $container->get('plugin.manager.views_bulk_operations_action'),
+      $container->get('views_bulk_operations.processor')
     );
   }
 
@@ -107,14 +137,9 @@ class ConfirmAction extends FormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $view_data = $form_state->getStorage();
-
     $form_state->setRedirectUrl($view_data['redirect_url']);
-
-    $batch = ViewsBulkOperationsBatch::getBatch($view_data);
-
+    $this->actionProcessor->executeProcessing($view_data);
     $this->tempStoreFactory->get($view_data['tempstore_name'])->delete($this->currentUser()->id());
-
-    batch_set($batch);
   }
 
 }
