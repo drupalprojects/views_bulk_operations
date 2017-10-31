@@ -7,7 +7,7 @@ services:
     arguments: ['@views_bulk_operations.data', '@entity_type.manager', '@plugin.manager.views_bulk_operations_action', '@current_user']
   plugin.manager.views_bulk_operations_action:
     class: Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager
-    arguments: ['@container.namespaces', '@cache.discovery', '@module_handler']
+    arguments: ['@container.namespaces', '@cache.discovery', '@module_handler', '@event_dispatcher']
   views_bulk_operations.access:
     class: Drupal\views_bulk_operations\Access\ViewsBulkOperationsAccess
     arguments: ['@user.private_tempstore']

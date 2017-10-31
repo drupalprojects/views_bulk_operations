@@ -539,10 +539,17 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       '' => $this->t('-- Select action --'),
     ];
     foreach ($this->actions as $id => $definition) {
+      // Filter out actions that weren't selected.
       if (!in_array($id, $this->options['selected_actions'], TRUE)) {
         continue;
       }
 
+      // Check access permission, if defined.
+      if (!empty($definition['requirements']['_permission']) && !$this->currentUser->hasPermission($definition['requirements']['_permission'])) {
+        continue;
+      }
+
+      // Override label if applicable.
       if (!empty($this->options['preconfiguration'][$id]['label_override'])) {
         $options[$id] = $this->options['preconfiguration'][$id]['label_override'];
       }

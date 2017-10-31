@@ -55,8 +55,9 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
    * the iterations are executed, the finished page is opened
    * and browser redirects to the final destination.
    *
-   * NOTE: As of Drupal 8.4 Functional test automatically redirects user through
-   * all Batch API pages, so this function is not longer needed.
+   * NOTE: As of Drupal 8.4, functional test
+   * automatically redirects user through all Batch API pages,
+   * so this function is not longer needed.
    */
   protected function assertBatchProcess() {
     // Get the current batch ID.
@@ -108,6 +109,9 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
     for ($i = 0; $i < 4; $i++) {
       $assertSession->fieldExists('edit-views-bulk-operations-bulk-form-' . $i, NULL, format_string('The checkbox on row @row appears.', ['@row' => $i]));
     }
+
+    // The advanced action should not be shown on the form - no permission.
+    $this->assertTrue(empty($this->cssSelect('select[name=views_bulk_operations_advanced_test_action]')), t('Advanced action is not selectable.'));
 
     // Log in as a user with 'edit any page content' permission
     // to have access to perform the test operation.
@@ -165,7 +169,7 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
 
     // Log in as a user with 'edit any page content' permission
     // to have access to perform the test operation.
-    $admin_user = $this->drupalCreateUser(['edit any page content']);
+    $admin_user = $this->drupalCreateUser(['edit any page content', 'execute advanced test action']);
     $this->drupalLogin($admin_user);
 
     // Execute the advanced test action.
@@ -190,7 +194,6 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
 
     // Execute action by posting the confirmation form
     // (also tests if the submit button exists on the page).
-    $confirm_button_value = t('Execute action');
     $this->drupalPostForm(NULL, [], t('Execute action'));
 
     // If all went well and Batch API did its job,
