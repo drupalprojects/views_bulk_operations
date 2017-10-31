@@ -190,7 +190,9 @@ class ViewsbulkOperationsViewData {
   public function getTotalResults() {
     // This number is not correct in $this->view->total_rows for
     // standard entity views, so we build a custom query in such a case.
-    $query = $this->view->query->query();
+    if (isset($this->view->query)) {
+      $query = $this->view->query->query();
+    }
     if (!empty($query)) {
       $total_results = $query->countQuery()->execute()->fetchField();
     }
