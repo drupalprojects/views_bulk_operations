@@ -73,7 +73,7 @@ class ViewsBulkOperationsActionManager extends ActionManager {
       if (is_object($plugin_definition) && !($plugin_definition = (array) $plugin_definition)) {
         continue;
       }
-      if (isset($plugin_definition['provider']) && !in_array($plugin_definition['provider'], array('core', 'component')) && !$this->providerExists($plugin_definition['provider'])) {
+      if (isset($plugin_definition['provider']) && !in_array($plugin_definition['provider'], ['core', 'component']) && !$this->providerExists($plugin_definition['provider'])) {
         unset($definitions[$plugin_id]);
       }
     }
@@ -101,10 +101,21 @@ class ViewsBulkOperationsActionManager extends ActionManager {
   }
 
   /**
-   * {@inheritdoc}
+   * Gets a specific plugin definition.
    *
+   * @param string $plugin_id
+   *   A plugin id.
+   * @param bool $exception_on_invalid
+   *   (optional) If TRUE, an invalid plugin ID will throw an exception.
    * @param array $parameters
    *   Parameters of the method. Passed to alter event.
+   *
+   * @return mixed
+   *   A plugin definition, or NULL if the plugin ID is invalid and
+   *   $exception_on_invalid is FALSE.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   *   Thrown if $plugin_id is invalid and $exception_on_invalid is TRUE.
    */
   public function getDefinition($plugin_id, $exception_on_invalid = TRUE, array $parameters = []) {
     // Loading all definitions here will not hurt much, as they're cached.
