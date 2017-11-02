@@ -90,6 +90,13 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   protected $actions = [];
 
   /**
+   * An array of bulk form options.
+   *
+   * @var array
+   */
+  protected $bulkOptions;
+
+  /**
    * The current user temporary storage.
    *
    * @var \Drupal\user\PrivateTempStore
@@ -396,6 +403,12 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       $this->options['element_label_class'] .= 'select-all';
       // Hide the actual label of the field on the table header.
       $this->options['label'] = '';
+
+      // Add empty classes if there are no actions available.
+      if (empty($this->getBulkOptions())) {
+        $this->options['element_label_class'] .= ' empty';
+        $this->options['element_class'] .= 'empty';
+      }
     }
   }
 
@@ -419,14 +432,15 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     // @todo Evaluate this again in https://www.drupal.org/node/2503009.
     $form['#cache']['max-age'] = 0;
 
-    // Add the tableselect javascript.
-    $form['#attached']['library'][] = 'core/drupal.tableselect';
     $use_revision = array_key_exists('revision', $this->view->getQuery()->getEntityTableInfo());
 
     // Only add the bulk form options and buttons if
     // there are results and any actions are available.
     $action_options = $this->getBulkOptions();
     if (!empty($this->view->result) && !empty($action_options)) {
+      // Add the tableselect javascript.
+      $form['#attached']['library'][] = 'core/drupal.tableselect';
+
       // Render checkboxes for all rows.
       $form[$this->options['id']]['#tree'] = TRUE;
       foreach ($this->view->result as $row_index => $row) {
@@ -464,7 +478,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       $form['header'][$this->options['id']]['action'] = [
         '#type' => 'select',
         '#title' => $this->options['action_title'],
-        '#options' => $action_options,
+        '#options' => ['' => $this->t('-- Select action --')] + $action_options,
       ];
 
       // Add AJAX functionality if actions are configurable through this form.
@@ -535,30 +549,30 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    *   An associative array of operations, suitable for a select element.
    */
   protected function getBulkOptions() {
-    $options = [
-      '' => $this->t('-- Select action --'),
-    ];
-    foreach ($this->actions as $id => $definition) {
-      // Filter out actions that weren't selected.
-      if (!in_array($id, $this->options['selected_actions'], TRUE)) {
-        continue;
-      }
+    if (!isset($this->bulkOptions)) {
+      $this->bulkOptions = [];
+      foreach ($this->actions as $id => $definition) {
+        // Filter out actions that weren't selected.
+        if (!in_array($id, $this->options['selected_actions'], TRUE)) {
+          continue;
+        }
 
-      // Check access permission, if defined.
-      if (!empty($definition['requirements']['_permission']) && !$this->currentUser->hasPermission($definition['requirements']['_permission'])) {
-        continue;
-      }
+        // Check access permission, if defined.
+        if (!empty($definition['requirements']['_permission']) && !$this->currentUser->hasPermission($definition['requirements']['_permission'])) {
+          continue;
+        }
 
-      // Override label if applicable.
-      if (!empty($this->options['preconfiguration'][$id]['label_override'])) {
-        $options[$id] = $this->options['preconfiguration'][$id]['label_override'];
-      }
-      else {
-        $options[$id] = $definition['label'];
+        // Override label if applicable.
+        if (!empty($this->options['preconfiguration'][$id]['label_override'])) {
+          $this->bulkOptions[$id] = $this->options['preconfiguration'][$id]['label_override'];
+        }
+        else {
+          $this->bulkOptions[$id] = $definition['label'];
+        }
       }
     }
 
-    return $options;
+    return $this->bulkOptions;
   }
 
   /**

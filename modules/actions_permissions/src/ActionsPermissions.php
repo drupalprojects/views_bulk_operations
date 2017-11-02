@@ -4,7 +4,7 @@ namespace Drupal\actions_permissions;
 
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\Core\Action\ActionManager;
+use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 
@@ -16,13 +16,9 @@ class ActionsPermissions implements ContainerInjectionInterface {
   use StringTranslationTrait;
 
   /**
-   * Action manager service.
+   * VBO Action manager service.
    *
-   * We're using the core action manager, because we need
-   * actions unprocessed by the Views Bulk Operations action
-   * manager.
-   *
-   * @var \Drupal\Core\Action\ActionManager
+   * @var \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager
    */
   protected $actionManager;
 
@@ -36,10 +32,12 @@ class ActionsPermissions implements ContainerInjectionInterface {
   /**
    * Constructor.
    *
-   * @param \Drupal\Core\Action\ActionManager $actionManager
+   * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager $actionManager
    *   The action manager.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   *   Entity type manager.
    */
-  public function __construct(ActionManager $actionManager, EntityTypeManagerInterface $entityTypeManager) {
+  public function __construct(ViewsBulkOperationsActionManager $actionManager, EntityTypeManagerInterface $entityTypeManager) {
     $this->actionManager = $actionManager;
     $this->entityTypeManager = $entityTypeManager;
   }
@@ -49,7 +47,7 @@ class ActionsPermissions implements ContainerInjectionInterface {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('plugin.manager.action'),
+      $container->get('plugin.manager.views_bulk_operations_action'),
       $container->get('entity_type.manager')
     );
   }
@@ -64,7 +62,11 @@ class ActionsPermissions implements ContainerInjectionInterface {
     $permissions = [];
     $entity_type_definitions = $this->entityTypeManager->getDefinitions();
 
-    foreach ($this->actionManager->getDefinitions() as $definition) {
+    // Get definitions that will not be altered by actions_permissions.
+    foreach ($this->actionManager->getDefinitions([
+      'skip_actions_permissions' => TRUE,
+      'nocache' => TRUE,
+    ]) as $definition) {
 
       // Skip actions that define their own requirements.
       if (!empty($definition['requirements'])) {
@@ -91,6 +93,13 @@ class ActionsPermissions implements ContainerInjectionInterface {
         ];
       }
     }
+
+    // Rebuild VBO action definitions cache with
+    // included action_permissions modifications.
+    $this->actionManager->getDefinitions([
+      'nocache' => TRUE,
+    ]);
+
     return $permissions;
   }
 

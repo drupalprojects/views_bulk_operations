@@ -14,7 +14,7 @@ use Drupal\Component\Plugin\Exception\PluginNotFoundException;
  */
 class ViewsBulkOperationsActionManager extends ActionManager {
 
-  const EVENT_NAME = 'views_bulk_operations.action_definitions';
+  const ALTER_ACTIONS_EVENT = 'views_bulk_operations.action_definitions';
 
   /**
    * Event dispatcher service.
@@ -22,6 +22,13 @@ class ViewsBulkOperationsActionManager extends ActionManager {
    * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
    */
   protected $eventDispatcher;
+
+  /**
+   * Additional parameters passed to alter event.
+   *
+   * @var array
+   */
+  protected $alterParameters;
 
   /**
    * Service constructor.
@@ -45,16 +52,47 @@ class ViewsBulkOperationsActionManager extends ActionManager {
   /**
    * {@inheritdoc}
    */
-  public function getDefinitions() {
-    $definitions = $this->getCachedDefinitions();
-    if (!isset($definitions)) {
-      $definitions = $this->findDefinitions();
+  protected function findDefinitions() {
+    $definitions = $this->getDiscovery()->getDefinitions();
 
-      foreach ($definitions as $plugin_id => &$definition) {
-        if (empty($definition)) {
-          unset($definitions[$plugin_id]);
-        }
+    // Incompatible actions.
+    $incompatible = ['node_delete_action'];
+
+    foreach ($definitions as $plugin_id => &$definition) {
+      $this->processDefinition($definition, $plugin_id);
+      if (empty($definition) || in_array($definition['id'], $incompatible)) {
+        unset($definitions[$plugin_id]);
       }
+    }
+    $this->alterDefinitions($definitions);
+    // If this plugin was provided by a module that does not exist, remove the
+    // plugin definition.
+    foreach ($definitions as $plugin_id => $plugin_definition) {
+      // If the plugin definition is an object, attempt to convert it to an
+      // array, if that is not possible, skip further processing.
+      if (is_object($plugin_definition) && !($plugin_definition = (array) $plugin_definition)) {
+        continue;
+      }
+      if (isset($plugin_definition['provider']) && !in_array($plugin_definition['provider'], array('core', 'component')) && !$this->providerExists($plugin_definition['provider'])) {
+        unset($definitions[$plugin_id]);
+      }
+    }
+    return $definitions;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array $parameters
+   *   Parameters of the method. Passed to alter event.
+   */
+  public function getDefinitions(array $parameters = []) {
+    if (empty($parameters['nocache'])) {
+      $definitions = $this->getCachedDefinitions();
+    }
+    if (!isset($definitions)) {
+      $this->alterParameters = $parameters;
+      $definitions = $this->findDefinitions($parameters);
 
       $this->setCachedDefinitions($definitions);
     }
@@ -64,10 +102,13 @@ class ViewsBulkOperationsActionManager extends ActionManager {
 
   /**
    * {@inheritdoc}
+   *
+   * @param array $parameters
+   *   Parameters of the method. Passed to alter event.
    */
-  public function getDefinition($plugin_id, $exception_on_invalid = TRUE) {
+  public function getDefinition($plugin_id, $exception_on_invalid = TRUE, array $parameters = []) {
     // Loading all definitions here will not hurt much, as they're cached.
-    $definitions = $this->getDefinitions();
+    $definitions = $this->getDefinitions($parameters);
     if (isset($definitions[$plugin_id])) {
       return $definitions[$plugin_id];
     }
@@ -89,13 +130,6 @@ class ViewsBulkOperationsActionManager extends ActionManager {
 
     if (!empty($this->defaults) && is_array($this->defaults)) {
       $definition = NestedArray::mergeDeep($this->defaults, $definition);
-    }
-
-    // Remove incompatible actions.
-    $incompatible = ['node_delete_action'];
-    if (!isset($definition['id']) || in_array($definition['id'], $incompatible)) {
-      $definition = NULL;
-      return;
     }
 
     // Merge in defaults.
@@ -120,8 +154,9 @@ class ViewsBulkOperationsActionManager extends ActionManager {
     // Let other modules change definitions.
     // Main purpose: Action permissions bridge.
     $event = new Event();
+    $event->alterParameters = $this->alterParameters;
     $event->definitions = &$definitions;
-    $this->eventDispatcher->dispatch(static::EVENT_NAME, $event);
+    $this->eventDispatcher->dispatch(static::ALTER_ACTIONS_EVENT, $event);
   }
 
 }
