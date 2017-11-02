@@ -396,20 +396,22 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   public function preRender(&$values) {
     parent::preRender($values);
 
+    // Add empty classes if there are no actions available.
+    if (empty($this->getBulkOptions())) {
+      $this->options['element_label_class'] .= 'empty';
+      $this->options['element_class'] .= 'empty';
+      $this->options['element_wrapper_class'] .= 'empty';
+      $this->options['label'] = '';
+    }
     // If the view is using a table style, provide a placeholder for a
     // "select all" checkbox.
-    if (!empty($this->view->style_plugin) && $this->view->style_plugin instanceof Table) {
+    elseif (!empty($this->view->style_plugin) && $this->view->style_plugin instanceof Table) {
       // Add the tableselect css classes.
       $this->options['element_label_class'] .= 'select-all';
       // Hide the actual label of the field on the table header.
       $this->options['label'] = '';
-
-      // Add empty classes if there are no actions available.
-      if (empty($this->getBulkOptions())) {
-        $this->options['element_label_class'] .= ' empty';
-        $this->options['element_class'] .= 'empty';
-      }
     }
+
   }
 
   /**
