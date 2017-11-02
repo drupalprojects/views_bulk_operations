@@ -172,6 +172,22 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
     $admin_user = $this->drupalCreateUser(['edit any page content', 'execute advanced test action']);
     $this->drupalLogin($admin_user);
 
+    // First execute the simple action to test
+    // the ViewsBulkOperationsController class.
+    $edit = [
+      'action' => 'views_bulk_operations_simple_test_action',
+    ];
+    $selected = [0, 2];
+    foreach ($selected as $index) {
+      $edit["views_bulk_operations_bulk_form[$index]"] = TRUE;
+    }
+    $this->drupalPostForm('views-bulk-operations-test-advanced', $edit, t('Apply to selected items'));
+
+    $assertSession->pageTextContains(
+      sprintf('Action processing results: Test (%d).', count($selected)),
+      sprintf('Action has been executed on %d nodes.', count($selected))
+    );
+
     // Execute the advanced test action.
     $edit = [
       'action' => 'views_bulk_operations_advanced_test_action',
