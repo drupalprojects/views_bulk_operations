@@ -436,6 +436,11 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
     $use_revision = array_key_exists('revision', $this->view->getQuery()->getEntityTableInfo());
 
+    // Add select all library for table display style.
+    if ($this->view->style_plugin instanceof Table) {
+      $form['#attached']['library'][] = 'views_bulk_operations/selectAll';
+    }
+
     // Only add the bulk form options and buttons if
     // there are results and any actions are available.
     $action_options = $this->getBulkOptions();
@@ -517,11 +522,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           ]),
           '#attributes' => ['class' => ['vbo-select-all']],
         ];
-
-        // Add fancy select all library for table display style.
-        if ($this->view->style_plugin instanceof Table) {
-          $form['#attached']['library'][] = 'views_bulk_operations/selectAll';
-        }
       }
 
       // Duplicate the form actions into the action container in the header.
