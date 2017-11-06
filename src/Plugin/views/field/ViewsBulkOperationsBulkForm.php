@@ -436,8 +436,9 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
     $use_revision = array_key_exists('revision', $this->view->getQuery()->getEntityTableInfo());
 
-    // Add select all library for table display style.
+    // Add select all and tableselect libraries for table display style.
     if ($this->view->style_plugin instanceof Table) {
+      $form['#attached']['library'][] = 'core/drupal.tableselect';
       $form['#attached']['library'][] = 'views_bulk_operations/selectAll';
     }
 
@@ -445,8 +446,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     // there are results and any actions are available.
     $action_options = $this->getBulkOptions();
     if (!empty($this->view->result) && !empty($action_options)) {
-      // Add the tableselect javascript.
-      $form['#attached']['library'][] = 'core/drupal.tableselect';
 
       // Render checkboxes for all rows.
       $form[$this->options['id']]['#tree'] = TRUE;
