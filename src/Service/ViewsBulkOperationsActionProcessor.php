@@ -7,7 +7,6 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\views\Views;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Drupal\views\ViewExecutable;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
 
@@ -40,6 +39,13 @@ class ViewsBulkOperationsActionProcessor {
   protected $user;
 
   /**
+   * Is the object initialized?
+   *
+   * @var bool
+   */
+  protected $initialized = FALSE;
+
+  /**
    * Definition of the processed action.
    *
    * @var array
@@ -52,6 +58,13 @@ class ViewsBulkOperationsActionProcessor {
    * @var array
    */
   protected $action;
+
+  /**
+   * The current view object.
+   *
+   * @var \Drupal\views\ViewExecutable
+   */
+  protected $view;
 
   /**
    * View data from the bulk form.
@@ -107,31 +120,42 @@ class ViewsBulkOperationsActionProcessor {
 
     // Set entire view data as object parameter for future reference.
     $this->bulkFormData = $view_data;
+
+    // Set the current view.
+    $this->setView();
+
+    $this->initialized = TRUE;
+  }
+
+  /**
+   * Set the current view object.
+   */
+  protected function setView() {
+    $this->view = Views::getView($this->bulkFormData['view_id']);
+    $this->view->setDisplay($this->bulkFormData['display_id']);
+    if (!empty($this->bulkFormData['arguments'])) {
+      $this->view->setArguments($this->bulkFormData['arguments']);
+    }
+    if (!empty($this->bulkFormData['exposed_input'])) {
+      $this->view->setExposedInput($this->bulkFormData['exposed_input']);
+    }
+    $this->view->build();
   }
 
   /**
    * Populate entity queue for processing.
+   *
+   * @param array $list
+   *   Array of selected view results.
+   * @param array $context
+   *   Batch API context.
    */
-  public function populateQueue($list, $data, &$context = []) {
+  public function populateQueue(array $list, array &$context = []) {
     $this->queue = [];
-
-    // Get the view if entity list is empty
-    // or we have to pass rows to the action.
-    if (empty($list) || $this->actionDefinition['pass_view']) {
-      $view = Views::getView($data['view_id']);
-      $view->setDisplay($data['display_id']);
-      if (!empty($data['arguments'])) {
-        $view->setArguments($data['arguments']);
-      }
-      if (!empty($data['exposed_input'])) {
-        $view->setExposedInput($data['exposed_input']);
-      }
-      $view->build();
-    }
 
     // Determine batch size and offset.
     if (!empty($context)) {
-      $batch_size = empty($data['batch_size']) ? 10 : $data['batch_size'];
+      $batch_size = empty($this->bulkFormData['batch_size']) ? 10 : $this->bulkFormData['batch_size'];
       if (!isset($context['sandbox']['current_batch'])) {
         $context['sandbox']['current_batch'] = 0;
       }
@@ -146,21 +170,21 @@ class ViewsBulkOperationsActionProcessor {
 
     // Get view results if required.
     if (empty($list)) {
-      $view->setCurrentPage($current_batch);
-      $view->setItemsPerPage($batch_size);
+      $this->view->setCurrentPage($current_batch);
+      $this->view->setItemsPerPage($batch_size);
 
       // If the view doesn't start from the first result,
       // move the offset.
-      if ($view_offset = $view->pager->getOffset()) {
+      if ($view_offset = $this->view->pager->getOffset()) {
         $offset += $view_offset;
       }
-      $view->query->setLimit($batch_size);
-      $view->query->setOffset($offset);
-      $view->query->execute($view);
+      $this->view->query->setLimit($batch_size);
+      $this->view->query->setOffset($offset);
+      $this->view->query->execute($this->view);
 
       // Prepare result getter.
-      $this->viewDataService->init($view, $view->getDisplay(), $this->bulkFormData['relationship_id']);
-      foreach ($view->result as $row) {
+      $this->viewDataService->init($this->view, $this->view->getDisplay(), $this->bulkFormData['relationship_id']);
+      foreach ($this->view->result as $row) {
         $this->queue[] = $this->viewDataService->getEntity($row);
       }
     }
@@ -177,7 +201,7 @@ class ViewsBulkOperationsActionProcessor {
 
       // Get view rows if required.
       if ($this->actionDefinition['pass_view']) {
-        $this->getViewResult($view, $batch_list);
+        $this->populateViewResult($batch_list);
       }
     }
 
@@ -185,16 +209,7 @@ class ViewsBulkOperationsActionProcessor {
     if (!empty($context)) {
       if (!isset($context['sandbox']['total'])) {
         if (empty($list)) {
-          $query = $view->query->query();
-          if (!empty($query)) {
-            $context['sandbox']['total'] = $this->viewDataService->getTotalResults();
-          }
-          else {
-            if (empty($view->result)) {
-              $view->query->execute($view);
-            }
-            $context['sandbox']['total'] = $view->total_rows;
-          }
+          $context['sandbox']['total'] = $this->viewDataService->getTotalResults();
         }
         else {
           $context['sandbox']['total'] = count($list);
@@ -210,7 +225,7 @@ class ViewsBulkOperationsActionProcessor {
     }
 
     if ($this->actionDefinition['pass_view']) {
-      $this->action->setView($view);
+      $this->action->setView($this->view);
     }
 
     return count($this->queue);
@@ -294,8 +309,10 @@ class ViewsBulkOperationsActionProcessor {
       unset($data['list']);
 
       // Populate and process queue.
-      $this->initialize($data);
-      if ($this->populateQueue($list, $data)) {
+      if (!$this->initialized) {
+        $this->initialize($data);
+      }
+      if ($this->populateQueue($list)) {
         $batch_results = $this->process();
       }
 
@@ -330,25 +347,23 @@ class ViewsBulkOperationsActionProcessor {
   /**
    * Populate view result with selected rows.
    *
-   * @param \Drupal\views\ViewExecutable $view
-   *   The view object.
    * @param array $list
    *   User selection data.
    */
-  protected function getViewResult(ViewExecutable $view, array $list) {
-    $view->query->execute($view);
+  protected function populateViewResult(array $list) {
+    $this->view->query->execute($this->view);
 
     // Filter result using the $list array.
     $selected = [];
     foreach ($list as $item) {
       $selected[$item[0]] = $item[0];
     }
-    foreach ($view->result as $delta => $row) {
+    foreach ($this->view->result as $delta => $row) {
       if (!isset($selected[$delta])) {
-        unset($view->result[$delta]);
+        unset($this->view->result[$delta]);
       }
     }
-    $view->result = array_values($view->result);
+    $this->view->result = array_values($this->view->result);
   }
 
 }

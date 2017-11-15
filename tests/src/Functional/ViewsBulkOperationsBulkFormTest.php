@@ -198,9 +198,16 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
     }
     $this->drupalPostForm('views-bulk-operations-test-advanced', $edit, t('Apply to selected items'));
 
-    // Check if configuration form is open and contains the
+    // Check if the configuration form is open and contains the
     // test_config field.
-    $assertSession->fieldExists('edit-test-config', NULL, 'The action select field appears.');
+    $assertSession->fieldExists('edit-test-config', NULL, 'The configuration field appears.');
+
+    // Check if the configuration form contains selected entity labels.
+    // NOTE: The view pager has an offset set on this view, so checkbox
+    // indexes are not equal to test nodes array keys. Hence the $index + 1.
+    foreach ($selected as $index) {
+      $assertSession->pageTextContains($this->testNodes[$index + 1]->label());
+    }
 
     $config_value = 'test value';
     $edit = [

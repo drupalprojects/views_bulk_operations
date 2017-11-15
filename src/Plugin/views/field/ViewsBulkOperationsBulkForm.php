@@ -104,6 +104,16 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   protected $userTempStore;
 
   /**
+   * Tempstore data.
+   *
+   * This gets passed to next requests if needed
+   * or used in the views form submit handler directly.
+   *
+   * @var array
+   */
+  protected $tempStoreData = [];
+
+  /**
    * Constructs a new BulkForm object.
    *
    * @param array $configuration
@@ -447,10 +457,16 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $action_options = $this->getBulkOptions();
     if (!empty($this->view->result) && !empty($action_options)) {
 
+      // Prepare entity labels data so the view will not
+      // need to be executed again on possible confirmation
+      // or configuration forms.
+      $this->tempStoreData['entity_labels'] = [];
+
       // Render checkboxes for all rows.
       $form[$this->options['id']]['#tree'] = TRUE;
       foreach ($this->view->result as $row_index => $row) {
         $entity = $this->getEntity($row);
+        $this->tempStoreData['entity_labels'][$row_index] = $entity->label();
 
         $form[$this->options['id']][$row_index] = [
           '#type' => 'checkbox',
@@ -509,15 +525,15 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         }
       }
 
-      $total_results = $this->viewData->getTotalResults();
+      $this->tempStoreData['total_results'] = $this->viewData->getTotalResults();
       $items_per_page = $this->view->getItemsPerPage();
 
       // Select all results checkbox.
-      if (!empty($items_per_page) && $total_results > $items_per_page) {
+      if (!empty($items_per_page) && $this->tempStoreData['total_results'] > $items_per_page) {
         $form['header'][$this->options['id']]['select_all'] = [
           '#type' => 'checkbox',
           '#title' => $this->t('Select all @count results in this view', [
-            '@count' => $total_results,
+            '@count' => $this->tempStoreData['total_results'],
           ]),
           '#attributes' => ['class' => ['vbo-select-all']],
         ];
@@ -594,7 +610,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       $action = $this->actions[$action_id];
 
-      $data = [
+      $this->tempStoreData += [
         'action_id' => $action_id,
         'action_label' => empty($this->options['preconfiguration'][$action_id]['label_override']) ? $action['label'] : $this->options['preconfiguration'][$action_id]['label_override'],
         'relationship_id' => $this->options['relationship'],
@@ -611,9 +627,20 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         // TODO: Check if this is necessary.
         $user_input = $form_state->getUserInput();
         $selected = array_values(array_filter($user_input[$this->options['id']]));
+        $selected_indexes = [];
         foreach ($selected as $bulk_form_key) {
-          $data['list'][] = json_decode(base64_decode($bulk_form_key));
+          $item = json_decode(base64_decode($bulk_form_key));
+          $this->tempStoreData['list'][] = $item;
+          $selected_indexes[] = $item[0];
         }
+
+        // Filter selected entity labels.
+        $this->tempStoreData['entity_labels'] = array_filter($this->tempStoreData['entity_labels'], function ($key) use ($selected_indexes) {
+          return in_array($key, $selected_indexes, TRUE);
+        }, ARRAY_FILTER_USE_KEY);
+      }
+      else {
+        $this->tempStoreData['entity_labels'] = [];
       }
 
       $configurable = $this->isConfigurable($action);
@@ -623,11 +650,11 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         $actionObject = $this->actionManager->createInstance($action_id);
         if (method_exists($actionObject, 'submitConfigurationForm')) {
           $actionObject->submitConfigurationForm($form, $form_state);
-          $data['configuration'] = $actionObject->getConfiguration();
+          $this->tempStoreData['configuration'] = $actionObject->getConfiguration();
         }
         else {
           $form_state->cleanValues();
-          $data['configuration'] = $form_state->getValues();
+          $this->tempStoreData['configuration'] = $form_state->getValues();
         }
       }
 
@@ -650,13 +677,13 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       // Redirect if needed.
       if (!empty($redirect_route)) {
         if ($form_state->getValue('select_all')) {
-          $data['arguments'] = $this->view->args;
-          $data['exposed_input'] = $this->view->getExposedInput();
+          $this->tempStoreData['arguments'] = $this->view->args;
+          $this->tempStoreData['exposed_input'] = $this->view->getExposedInput();
         }
-        $data['batch_size'] = $this->options['batch_size'];
-        $data['redirect_url'] = Url::createFromRequest(\Drupal::request());
+        $this->tempStoreData['batch_size'] = $this->options['batch_size'];
+        $this->tempStoreData['redirect_url'] = Url::createFromRequest(\Drupal::request());
 
-        $this->userTempStore->set($this->currentUser->id(), $data);
+        $this->userTempStore->set($this->currentUser->id(), $this->tempStoreData);
 
         $form_state->setRedirect($redirect_route, [
           'view_id' => $this->view->id(),
@@ -665,7 +692,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
       // Or process rows here.
       else {
-        $this->actionProcessor->executeProcessing($data);
+        $this->actionProcessor->executeProcessing($this->tempStoreData);
       }
     }
   }

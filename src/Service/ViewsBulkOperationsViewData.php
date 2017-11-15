@@ -197,7 +197,10 @@ class ViewsbulkOperationsViewData {
       $total_results = $query->countQuery()->execute()->fetchField();
     }
     else {
-      $total_results = $this->view->total_rows;
+      if (isset($this->view->query) && empty($this->view->result)) {
+        $this->view->query->execute($this->view);
+        $total_results = $this->view->total_rows;
+      }
     }
 
     if ($offset = $this->view->pager->getOffset()) {

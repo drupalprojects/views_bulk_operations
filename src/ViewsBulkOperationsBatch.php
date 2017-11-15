@@ -36,7 +36,7 @@ class ViewsBulkOperationsBatch {
     $actionProcessor->initialize($data);
 
     // Do the processing.
-    if ($count = $actionProcessor->populateQueue($list, $data, $context)) {
+    if ($count = $actionProcessor->populateQueue($list, $context)) {
       $batch_results = $actionProcessor->process();
       if (!empty($batch_results)) {
         // Convert translatable markup to strings in order to allow

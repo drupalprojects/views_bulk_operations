@@ -14,6 +14,8 @@ use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
  */
 class ConfigureAction extends FormBase {
 
+  use ViewsBulkOperationsFormTrait;
+
   /**
    * User private temporary storage factory.
    *
@@ -74,19 +76,29 @@ class ConfigureAction extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, $view_id = NULL, $display_id = NULL) {
 
-    $tempstore_name = 'views_bulk_operations_' . $view_id . '_' . $display_id;
-    $tempstore = $this->tempStoreFactory->get($tempstore_name);
-    $view_data = $tempstore->get($this->currentUser()->id());
-    $view_data['tempstore_name'] = $tempstore_name;
+    $form_data = $this->getFormData($view_id, $display_id);
 
     // TODO: display an error msg, redirect back.
-    if (!isset($view_data['action_id'])) {
+    if (!isset($form_data['action_id'])) {
       return;
     }
 
-    $action = $this->actionManager->createInstance($view_data['action_id']);
+    $form['#title'] = $this->t('Configure "%action" action applied to the selection', ['%action' => $form_data['action_label']]);
 
-    $form['#title'] = $this->t('Configure "%action" action applied to the selection', ['%action' => $view_data['action_label']]);
+    $selection = [];
+    if (!empty($form_data['entity_labels'])) {
+      $form['list'] = [
+        '#theme' => 'item_list',
+        '#items' => $form_data['entity_labels'],
+      ];
+    }
+    else {
+      $form['list'] = [
+        '#type' => 'item',
+        '#markup' => $this->t('All view results'),
+      ];
+    }
+    $form['list']['#title'] = $this->t('Selected @count entities:', ['@count' => $form_data['selected_count']]);
 
     // :D Make sure the submit button is at the bottom of the form
     // and is editale from the action buildConfigurationForm method.
@@ -99,14 +111,16 @@ class ConfigureAction extends FormBase {
       ],
     ];
 
+    $action = $this->actionManager->createInstance($form_data['action_id']);
+
     if (method_exists($action, 'setContext')) {
-      $action->setContext($view_data);
+      $action->setContext($form_data);
     }
 
     $form = $action->buildConfigurationForm($form, $form_state);
 
     $storage = $form_state->getStorage();
-    $storage['views_bulk_operations'] = $view_data;
+    $storage['views_bulk_operations'] = $form_data;
     $form_state->setStorage($storage);
 
     return $form;
@@ -117,9 +131,9 @@ class ConfigureAction extends FormBase {
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
     $storage = $form_state->getStorage();
-    $view_data = $storage['views_bulk_operations'];
+    $form_data = $storage['views_bulk_operations'];
 
-    $action = $this->actionManager->createInstance($view_data['action_id']);
+    $action = $this->actionManager->createInstance($form_data['action_id']);
     if (method_exists($action, 'validateConfigurationForm')) {
       $action->validateConfigurationForm($form, $form_state);
     }
@@ -130,32 +144,32 @@ class ConfigureAction extends FormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $storage = $form_state->getStorage();
-    $view_data = $storage['views_bulk_operations'];
+    $form_data = $storage['views_bulk_operations'];
 
-    $action = $this->actionManager->createInstance($view_data['action_id']);
+    $action = $this->actionManager->createInstance($form_data['action_id']);
     if (method_exists($action, 'submitConfigurationForm')) {
       $action->submitConfigurationForm($form, $form_state);
-      $view_data['configuration'] = $action->getConfiguration();
+      $form_data['configuration'] = $action->getConfiguration();
     }
     else {
       $form_state->cleanValues();
-      $view_data['configuration'] = $form_state->getValues();
+      $form_data['configuration'] = $form_state->getValues();
     }
 
-    $definition = $this->actionManager->getDefinition($view_data['action_id']);
+    $definition = $this->actionManager->getDefinition($form_data['action_id']);
     if (!empty($definition['confirm_form_route_name'])) {
       // Update tempStore data.
-      $this->tempStoreFactory->get($view_data['tempstore_name'])->set($this->currentUser()->id(), $view_data);
+      $this->tempStoreFactory->get($form_data['tempstore_name'])->set($this->currentUser()->id(), $form_data);
       // Go to the confirm route.
       $form_state->setRedirect($definition['confirm_form_route_name'], [
-        'view_id' => $view_data['view_id'],
-        'display_id' => $view_data['display_id'],
+        'view_id' => $form_data['view_id'],
+        'display_id' => $form_data['display_id'],
       ]);
     }
     else {
-      $form_state->setRedirectUrl($view_data['redirect_url']);
-      $this->actionProcessor->executeProcessing($view_data);
-      $this->tempStoreFactory->get($view_data['tempstore_name'])->delete($this->currentUser()->id());
+      $form_state->setRedirectUrl($form_data['redirect_url']);
+      $this->actionProcessor->executeProcessing($form_data);
+      $this->tempStoreFactory->get($form_data['tempstore_name'])->delete($this->currentUser()->id());
     }
   }
 
