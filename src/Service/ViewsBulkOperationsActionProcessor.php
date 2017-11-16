@@ -6,6 +6,7 @@ use Drupal\Core\TypedData\TranslatableInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\views\Views;
 use Drupal\Core\Session\AccountProxyInterface;
+use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
@@ -16,6 +17,13 @@ use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
 class ViewsBulkOperationsActionProcessor {
 
   use StringTranslationTrait;
+
+  /**
+   * View data provider service.
+   *
+   * @var \Drupal\views_bulk_operations\ViewsbulkOperationsViewData
+   */
+  protected $viewDataService;
 
   /**
    * Entity type manager.
@@ -32,11 +40,18 @@ class ViewsBulkOperationsActionProcessor {
   protected $actionManager;
 
   /**
-   * Current user.
+   * Current user object.
    *
    * @var \Drupal\Core\Session\AccountProxyInterface
    */
   protected $user;
+
+  /**
+   * Module handler service.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   */
+  protected $moduleHandler;
 
   /**
    * Is the object initialized?
@@ -74,13 +89,6 @@ class ViewsBulkOperationsActionProcessor {
   protected $bulkFormData;
 
   /**
-   * View data provider service.
-   *
-   * @var \Drupal\views_bulk_operations\ViewsbulkOperationsViewData
-   */
-  protected $viewDataService;
-
-  /**
    * Array of entities that will be processed in the current batch.
    *
    * @var array
@@ -89,12 +97,24 @@ class ViewsBulkOperationsActionProcessor {
 
   /**
    * Constructor.
+   *
+   * @param \Drupal\views_bulk_operations\ViewsbulkOperationsViewData $viewDataService
+   *   View data provider service.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   *   Entity type manager.
+   * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager $actionManager
+   *   VBO action manager.
+   * @param \Drupal\Core\Session\AccountProxyInterface $user
+   *   Current user object.
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
+   *   Module handler service.
    */
-  public function __construct(ViewsbulkOperationsViewData $viewDataService, EntityTypeManagerInterface $entityTypeManager, ViewsBulkOperationsActionManager $actionManager, AccountProxyInterface $user) {
+  public function __construct(ViewsbulkOperationsViewData $viewDataService, EntityTypeManagerInterface $entityTypeManager, ViewsBulkOperationsActionManager $actionManager, AccountProxyInterface $user, ModuleHandlerInterface $moduleHandler) {
     $this->viewDataService = $viewDataService;
     $this->entityTypeManager = $entityTypeManager;
     $this->actionManager = $actionManager;
     $this->user = $user;
+    $this->moduleHandler = $moduleHandler;
   }
 
   /**
@@ -190,6 +210,9 @@ class ViewsBulkOperationsActionProcessor {
       }
       $this->view->query->setLimit($batch_size);
       $this->view->query->setOffset($offset);
+
+      // Let modules modify the view just prior to executing it.
+      $this->moduleHandler->invokeAll('views_pre_execute', array($this->view));
       $this->view->query->execute($this->view);
 
       // Prepare result getter.
