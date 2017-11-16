@@ -676,10 +676,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       // Redirect if needed.
       if (!empty($redirect_route)) {
-        if ($form_state->getValue('select_all')) {
-          $this->tempStoreData['arguments'] = $this->view->args;
-          $this->tempStoreData['exposed_input'] = $this->view->getExposedInput();
-        }
+        $this->tempStoreData['arguments'] = $this->view->args;
+        $this->tempStoreData['exposed_input'] = $this->view->getExposedInput();
         $this->tempStoreData['batch_size'] = $this->options['batch_size'];
         $this->tempStoreData['redirect_url'] = Url::createFromRequest(\Drupal::request());
 
