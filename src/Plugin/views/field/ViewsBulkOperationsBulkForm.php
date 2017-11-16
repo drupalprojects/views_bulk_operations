@@ -619,6 +619,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         'view_id' => $this->view->id(),
         'display_id' => $this->view->current_display,
         'batch' => $this->options['batch'],
+        'arguments' => $this->view->args,
+        'exposed_input' => $this->view->getExposedInput(),
       ];
 
       if (!$form_state->getValue('select_all')) {
@@ -676,8 +678,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       // Redirect if needed.
       if (!empty($redirect_route)) {
-        $this->tempStoreData['arguments'] = $this->view->args;
-        $this->tempStoreData['exposed_input'] = $this->view->getExposedInput();
         $this->tempStoreData['batch_size'] = $this->options['batch_size'];
         $this->tempStoreData['redirect_url'] = Url::createFromRequest(\Drupal::request());
 
@@ -690,7 +690,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
       // Or process rows here.
       else {
-        $this->actionProcessor->executeProcessing($this->tempStoreData);
+        $this->actionProcessor->executeProcessing($this->tempStoreData, $this->view);
       }
     }
   }

@@ -102,8 +102,10 @@ class ViewsBulkOperationsActionProcessor {
    *
    * @param array $view_data
    *   Data concerning the view that will be processed.
+   * @param mixed $view
+   *   The current view object or NULL.
    */
-  public function initialize(array $view_data) {
+  public function initialize(array $view_data, $view = NULL) {
     if (!isset($view_data['configuration'])) {
       $view_data['configuration'] = [];
     }
@@ -122,24 +124,32 @@ class ViewsBulkOperationsActionProcessor {
     $this->bulkFormData = $view_data;
 
     // Set the current view.
-    $this->setView();
+    $this->setView($view);
 
     $this->initialized = TRUE;
   }
 
   /**
    * Set the current view object.
+   *
+   * @param mixed $view
+   *   The current view object or NULL.
    */
-  protected function setView() {
-    $this->view = Views::getView($this->bulkFormData['view_id']);
-    $this->view->setDisplay($this->bulkFormData['display_id']);
-    if (!empty($this->bulkFormData['arguments'])) {
-      $this->view->setArguments($this->bulkFormData['arguments']);
+  protected function setView($view = NULL) {
+    if (!is_null($view)) {
+      $this->view = $view;
     }
-    if (!empty($this->bulkFormData['exposed_input'])) {
-      $this->view->setExposedInput($this->bulkFormData['exposed_input']);
+    else {
+      $this->view = Views::getView($this->bulkFormData['view_id']);
+      $this->view->setDisplay($this->bulkFormData['display_id']);
+      if (!empty($this->bulkFormData['arguments'])) {
+        $this->view->setArguments($this->bulkFormData['arguments']);
+      }
+      if (!empty($this->bulkFormData['exposed_input'])) {
+        $this->view->setExposedInput($this->bulkFormData['exposed_input']);
+      }
+      $this->view->build();
     }
-    $this->view->build();
   }
 
   /**
@@ -298,8 +308,10 @@ class ViewsBulkOperationsActionProcessor {
    *
    * @param array $data
    *   Data concerning the view that will be processed.
+   * @param mixed $view
+   *   The current view object or NULL.
    */
-  public function executeProcessing(array $data) {
+  public function executeProcessing(array $data, $view = NULL) {
     if ($data['batch']) {
       $batch = ViewsBulkOperationsBatch::getBatch($data);
       batch_set($batch);
@@ -310,7 +322,7 @@ class ViewsBulkOperationsActionProcessor {
 
       // Populate and process queue.
       if (!$this->initialized) {
-        $this->initialize($data);
+        $this->initialize($data, $view);
       }
       if ($this->populateQueue($list)) {
         $batch_results = $this->process();
