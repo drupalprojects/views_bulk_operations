@@ -528,7 +528,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       // Select all results checkbox.
       $show_all_selector = FALSE;
       if (!empty($this->view->pager) && method_exists($this->view->pager, 'hasMoreRecords')) {
-        $show_all_selector = $this->view->pager->hasMoreRecords();
+        $show_all_selector = ($this->view->pager->getCurrentPage() > 0 || $this->view->pager->hasMoreRecords());
       }
       $this->tempStoreData['total_results'] = $this->viewData->getTotalResults();
       if ($show_all_selector) {
