@@ -195,9 +195,7 @@ class ViewsbulkOperationsViewData {
   /**
    * Get the total count of results on all pages.
    *
-   * TODO: Test this function with more use cases and
-   * custom view providers like search_api, especially with
-   * mini pager that always causes issues.
+   * TODO: Find a way to get total number of results with mini pager.
    *
    * @return int
    *   The total number of results this view displays.
@@ -222,7 +220,7 @@ class ViewsbulkOperationsViewData {
     }
 
     // Include pager offset.
-    if ($offset = $this->view->pager->getOffset()) {
+    if ($total_results && $offset = $this->view->pager->getOffset()) {
       $total_results -= $offset;
     }
 

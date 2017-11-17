@@ -525,15 +525,17 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         }
       }
 
-      $this->tempStoreData['total_results'] = $this->viewData->getTotalResults();
-      $items_per_page = $this->view->getItemsPerPage();
-
       // Select all results checkbox.
-      if (!empty($items_per_page) && $this->tempStoreData['total_results'] > $items_per_page) {
+      $show_all_selector = FALSE;
+      if (!empty($this->view->pager) && method_exists($this->view->pager, 'hasMoreRecords')) {
+        $show_all_selector = $this->view->pager->hasMoreRecords();
+      }
+      $this->tempStoreData['total_results'] = $this->viewData->getTotalResults();
+      if ($show_all_selector) {
         $form['header'][$this->options['id']]['select_all'] = [
           '#type' => 'checkbox',
-          '#title' => $this->t('Select all @count results in this view', [
-            '@count' => $this->tempStoreData['total_results'],
+          '#title' => $this->t('Select all@count results in this view', [
+            '@count' => $this->tempStoreData['total_results'] ? ' ' . $this->tempStoreData['total_results'] : '',
           ]),
           '#attributes' => ['class' => ['vbo-select-all']],
         ];
@@ -612,7 +614,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       $this->tempStoreData += [
         'action_id' => $action_id,
-        'action_label' => empty($this->options['preconfiguration'][$action_id]['label_override']) ? $action['label'] : $this->options['preconfiguration'][$action_id]['label_override'],
+        'action_label' => empty($this->options['preconfiguration'][$action_id]['label_override']) ? (string) $action['label'] : $this->options['preconfiguration'][$action_id]['label_override'],
         'relationship_id' => $this->options['relationship'],
         'preconfiguration' => isset($this->options['preconfiguration'][$action_id]) ? $this->options['preconfiguration'][$action_id] : [],
         'list' => [],

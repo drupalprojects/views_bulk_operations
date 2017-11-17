@@ -36,7 +36,8 @@ class ViewsBulkOperationsBatch {
     $actionProcessor->initialize($data);
 
     // Do the processing.
-    if ($count = $actionProcessor->populateQueue($list, $context)) {
+    $count = $actionProcessor->populateQueue($list, $context);
+    if ($count) {
       $batch_results = $actionProcessor->process();
       if (!empty($batch_results)) {
         // Convert translatable markup to strings in order to allow
@@ -46,11 +47,22 @@ class ViewsBulkOperationsBatch {
         }
       }
       $context['sandbox']['processed'] += $count;
-      $context['finished'] = $context['sandbox']['processed'] / $context['sandbox']['total'];
-      $context['message'] = static::t('Processed @count of @total entities.', [
-        '@count' => $context['sandbox']['processed'],
-        '@total' => $context['sandbox']['total'],
-      ]);
+
+      $context['finished'] = 0;
+      // There may be cases where we don't know the total number of
+      // results (e.g. mini pager with a search_api view)
+      if ($context['sandbox']['total']) {
+        $context['finished'] = $context['sandbox']['processed'] / $context['sandbox']['total'];
+        $context['message'] = static::t('Processed @count of @total entities.', [
+          '@count' => $context['sandbox']['processed'],
+          '@total' => $context['sandbox']['total'],
+        ]);
+      }
+      else {
+        $context['message'] = static::t('Processed @count entities.', [
+          '@count' => $context['sandbox']['processed'],
+        ]);
+      }
     }
   }
 

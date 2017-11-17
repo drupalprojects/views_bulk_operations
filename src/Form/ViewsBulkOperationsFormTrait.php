@@ -30,8 +30,11 @@ trait ViewsBulkOperationsFormTrait {
     if (!empty($form_data['entity_labels'])) {
       $form_data['selected_count'] = count($form_data['entity_labels']);
     }
-    else {
+    elseif ($form_data['total_results']) {
       $form_data['selected_count'] = $form_data['total_results'];
+    }
+    else {
+      $form_data['selected_count'] = (string) $this->t('all');
     }
 
     return $form_data;
