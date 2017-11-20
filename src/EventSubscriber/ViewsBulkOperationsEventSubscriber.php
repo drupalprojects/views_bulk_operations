@@ -50,8 +50,8 @@ class ViewsBulkOperationsEventSubscriber implements EventSubscriberInterface {
    */
   public function provideViewData(ViewsBulkOperationsEvent $event) {
     $view_data = $event->getViewData();
-    if (!empty($view_data['table']['entity type']) && $entity_type = $view_data['table']['entity type']) {
-      $event->setEntityTypeIds([$entity_type]);
+    if (!empty($view_data['table']['entity type'])) {
+      $event->setEntityTypeIds([$view_data['table']['entity type']]);
       $event->setEntityGetter([
         'callable' => [$this->viewData, 'getEntityDefault'],
       ]);

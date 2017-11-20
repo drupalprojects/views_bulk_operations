@@ -92,7 +92,6 @@ class ViewsBulkOperationsBatch {
    */
   public static function getBatch($view_data) {
     $results = $view_data['list'];
-    unset($view_data['list']);
 
     return [
       'title' => static::t('Performing @operation on selected entities.', ['@operation' => $view_data['action_label']]),

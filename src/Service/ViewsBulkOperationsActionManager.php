@@ -56,7 +56,10 @@ class ViewsBulkOperationsActionManager extends ActionManager {
     $definitions = $this->getDiscovery()->getDefinitions();
 
     // Incompatible actions.
-    $incompatible = ['node_delete_action'];
+    $incompatible = [
+      'node_delete_action',
+      'user_cancel_user_action',
+    ];
 
     foreach ($definitions as $plugin_id => &$definition) {
       $this->processDefinition($definition, $plugin_id);

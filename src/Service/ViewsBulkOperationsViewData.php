@@ -213,7 +213,7 @@ class ViewsbulkOperationsViewData {
     else {
       if (isset($this->view->query) && empty($this->view->result)) {
         // Let modules modify the view just prior to executing it.
-        $this->moduleHandler->invokeAll('views_pre_execute', array($this->view));
+        $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
         $this->view->query->execute($this->view);
       }
       $total_results = $this->view->total_rows;
