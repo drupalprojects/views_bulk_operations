@@ -167,6 +167,7 @@ display:
           batch: false
           batch_size: 10
           form_step: true
+          buttons: true
           action_title: Action
           selected_actions:
             views_bulk_operations_simple_test_action: views_bulk_operations_simple_test_action

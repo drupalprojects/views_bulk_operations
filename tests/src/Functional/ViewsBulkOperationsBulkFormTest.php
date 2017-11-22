@@ -102,8 +102,6 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
     $first_form_element = $this->xpath('//form/div[1][@id = :id]', [':id' => 'edit-header']);
     $this->assertTrue($first_form_element, 'The views form edit header appears first.');
 
-    $assertSession->fieldExists('edit-action', NULL, 'The action select field appears.');
-
     // Make sure a checkbox appears on all rows.
     $edit = [];
     for ($i = 0; $i < 4; $i++) {
@@ -119,14 +117,14 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
     $this->drupalLogin($admin_user);
 
     // Execute the simple test action.
-    $edit = [
-      'action' => 'views_bulk_operations_simple_test_action',
-    ];
+    $edit = [];
     $selected = [0, 2, 3];
     foreach ($selected as $index) {
       $edit["views_bulk_operations_bulk_form[$index]"] = TRUE;
     }
-    $this->drupalPostForm('views-bulk-operations-test', $edit, t('Apply to selected items'));
+
+    // Tests: actions as buttons, label override.
+    $this->drupalPostForm('views-bulk-operations-test', $edit, t('Simple test action'));
 
     $testViewConfig = \Drupal::service('config.factory')->get('views.view.views_bulk_operations_test');
     $configData = $testViewConfig->getRawData();
@@ -146,10 +144,9 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
 
     // Test the select all functionality.
     $edit = [
-      'action' => 'views_bulk_operations_simple_test_action',
       'select_all' => 1,
     ];
-    $this->drupalPostForm(NULL, $edit, t('Apply to selected items'));
+    $this->drupalPostForm(NULL, $edit, t('Simple test action'));
 
     $assertSession->pageTextContains(
       sprintf('Action processing results: Test (%d).', count($this->testNodes)),

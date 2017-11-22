@@ -258,6 +258,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $options['batch'] = ['default' => TRUE];
     $options['batch_size'] = ['default' => 10];
     $options['form_step'] = ['default' => TRUE];
+    $options['buttons'] = ['default' => FALSE];
     $options['action_title'] = ['default' => $this->t('Action')];
     $options['selected_actions'] = ['default' => []];
     $options['preconfiguration'] = ['default' => []];
@@ -305,6 +306,12 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       '#default_value' => $this->options['form_step'],
       // Due to #2879310 this setting must always be at TRUE.
       '#access' => FALSE,
+    ];
+
+    $form['buttons'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Display selectable actions as buttons.'),
+      '#default_value' => $this->options['buttons'],
     ];
 
     $form['action_title'] = [
@@ -479,9 +486,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         ];
       }
 
-      // Replace the form submit button label.
-      $form['actions']['submit']['#value'] = $this->t('Apply to selected items');
-
       // Ensure a consistent container for filters/operations
       // in the view header.
       $form['header'] = [
@@ -497,11 +501,27 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           'id' => 'vbo-action-form-wrapper',
         ],
       ];
-      $form['header'][$this->options['id']]['action'] = [
-        '#type' => 'select',
-        '#title' => $this->options['action_title'],
-        '#options' => ['' => $this->t('-- Select action --')] + $action_options,
-      ];
+
+      // Display actions buttons or selector.
+      if ($this->options['buttons']) {
+        unset($form['actions']['submit']);
+        foreach ($action_options as $id => $label) {
+          $form['actions'][$id] = [
+            '#type' => 'submit',
+            '#value' => $label,
+          ];
+        }
+      }
+      else {
+        // Replace the form submit button label.
+        $form['actions']['submit']['#value'] = $this->t('Apply to selected items');
+
+        $form['header'][$this->options['id']]['action'] = [
+          '#type' => 'select',
+          '#title' => $this->options['action_title'],
+          '#options' => ['' => $this->t('-- Select action --')] + $action_options,
+        ];
+      }
 
       // Add AJAX functionality if actions are configurable through this form.
       if (empty($this->options['form_step'])) {
@@ -701,6 +721,12 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * {@inheritdoc}
    */
   public function viewsFormValidate(&$form, FormStateInterface $form_state) {
+    if ($this->options['buttons']) {
+      $trigger = $form_state->getTriggeringElement();
+      $action_id = end($trigger['#parents']);
+      $form_state->setValue('action', $action_id);
+    }
+
     if (empty($form_state->getValue('action'))) {
       $form_state->setErrorByName('action', $this->t('Please select an action to perform.'));
     }

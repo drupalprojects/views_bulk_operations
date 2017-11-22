@@ -164,6 +164,7 @@ display:
           batch: true
           batch_size: 2
           form_step: true
+          buttons: false
           action_title: Action
           selected_actions:
             views_bulk_operations_simple_test_action: views_bulk_operations_simple_test_action
