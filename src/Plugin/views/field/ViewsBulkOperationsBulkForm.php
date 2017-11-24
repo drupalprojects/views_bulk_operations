@@ -326,9 +326,10 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       '#type' => 'details',
       '#open' => TRUE,
       '#title' => $this->t('Selected actions'),
+      '#attributes' => ['class' => ['vbo-actions-widget']],
     ];
 
-    // Load values for AJAX functionality.
+    // Load values for display.
     $form_values = $form_state->getValue(['options', 'selected_actions']);
     if (is_null($form_values)) {
       $selected_actions = $this->options['selected_actions'];
@@ -348,7 +349,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         '#type' => 'checkbox',
         '#title' => $action['label'],
         '#default_value' => empty($selected_actions[$id]) ? 0 : 1,
-        '#attributes' => ['class' => ['action-state']],
+        '#attributes' => ['class' => ['vbo-action-state']],
       ];
 
       // There are problems with AJAX on this form when adding
