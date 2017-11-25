@@ -176,7 +176,6 @@ class ViewsBulkOperationsActionProcessor {
       if (!empty($this->bulkFormData['exposed_input'])) {
         $this->view->setExposedInput($this->bulkFormData['exposed_input']);
       }
-      $this->view->build();
     }
   }
 
@@ -207,8 +206,9 @@ class ViewsBulkOperationsActionProcessor {
 
     // Get view results if required.
     if (empty($list)) {
-      $this->view->setCurrentPage($current_batch);
       $this->view->setItemsPerPage($batch_size);
+      $this->view->setCurrentPage($current_batch);
+      $this->view->build();
 
       // If the view doesn't start from the first result,
       // move the offset.
@@ -238,10 +238,8 @@ class ViewsBulkOperationsActionProcessor {
       foreach ($batch_list as $item) {
         $this->queue[] = $this->getEntity($item);
       }
-
-      // Get view rows if required.
       if ($this->actionDefinition['pass_view']) {
-        $this->populateViewResult($batch_list);
+        $this->populateViewResult($batch_list, $context, $batch_size, $current_batch);
       }
     }
 
@@ -351,7 +349,12 @@ class ViewsBulkOperationsActionProcessor {
 
       // Populate and process queue.
       if (!$this->initialized) {
-        $this->initialize($data, $view);
+        if (empty($list)) {
+          $this->initialize($data);
+        }
+        else {
+          $this->initialize($data, $view);
+        }
       }
       if ($this->populateQueue($list)) {
         $batch_results = $this->process();
@@ -391,20 +394,39 @@ class ViewsBulkOperationsActionProcessor {
    * @param array $list
    *   User selection data.
    */
-  protected function populateViewResult(array $list) {
-    $this->view->query->execute($this->view);
+  protected function populateViewResult(array $list, $context, $batch_size, $current_batch) {
+    if (!empty($context['results']['list'])) {
+      $this->view->setItemsPerPage($batch_size);
+      $this->view->setCurrentPage($current_batch);
+      $this->view->build();
+      $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
+      $this->view->query->execute($this->view);
+    }
+    else {
+      $this->view->build();
+      $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
+      $this->view->query->execute($this->view);
 
-    // Filter result using the $list array.
-    $selected = [];
-    foreach ($list as $item) {
-      $selected[$item[0]] = $item[0];
-    }
-    foreach ($this->view->result as $delta => $row) {
-      if (!isset($selected[$delta])) {
-        unset($this->view->result[$delta]);
+      // Filter result using the $list array.
+      foreach ($this->view->result as $delta => $row) {
+        $entity = $this->viewDataService->getEntity($row);
+        $unset = TRUE;
+        foreach ($list as $item) {
+          if (
+            $item[1] === $entity->language()->getId() &&
+            $item[2] === $entity->getEntityTypeId() &&
+            $item[3] === $entity->id()
+          ) {
+            $unset = FALSE;
+            break;
+          }
+        }
+        if ($unset) {
+          unset($this->view->result[$delta]);
+        }
       }
+      $this->view->result = array_values($this->view->result);
     }
-    $this->view->result = array_values($this->view->result);
   }
 
   /**
