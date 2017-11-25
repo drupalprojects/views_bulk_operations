@@ -157,6 +157,7 @@ class ViewsBulkOperationsBatch {
       'title' => static::t('Performing @operation on selected entities.', ['@operation' => $view_data['action_label']]),
       'operations' => [],
       'finished' => [$current_class, 'finished'],
+      'progress_message' => static::t('Processing, estimated time left: @estimate, elapsed: @elapsed.'),
     ];
 
     if (empty($view_data['list'])) {
