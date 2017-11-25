@@ -45,6 +45,13 @@ class ViewsBulkOperationsAdvancedTestAction extends ViewsBulkOperationsActionBas
       $this->configuration['test_config'],
       $entity->label()
     ));
+
+    // Unpublish entity.
+    if ($this->configuration['test_config'] === 'unpublish') {
+      $entity->status = NODE_NOT_PUBLISHED;
+      $entity->save();
+    }
+
     return 'Test';
   }
 

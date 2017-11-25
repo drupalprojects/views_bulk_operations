@@ -75,7 +75,6 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
     $this->assertArrayHasKey('title', $batch);
     $this->assertArrayHasKey('operations', $batch);
     $this->assertArrayHasKey('finished', $batch);
-    $this->assertEquals($batch['operations'][0][0], ['\Drupal\views_bulk_operations\ViewsBulkOperationsBatch', 'operation']);
   }
 
   /**
@@ -131,7 +130,7 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
       'view_id' => 'test_view',
       'display_id' => 'test_display',
       'batch_size' => $batch_size,
-
+      'list' => [],
     ];
     $context = [
       'sandbox' => [
@@ -140,9 +139,9 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
       ],
     ];
 
-    TestViewsBulkOperationsBatch::operation([], $data, $context);
+    TestViewsBulkOperationsBatch::operation($data, $context);
 
-    $this->assertEquals(count($context['results']), $batch_size);
+    $this->assertEquals(count($context['results']['operations']), $batch_size);
     $this->assertEquals($context['finished'], ($batch_size / $entities_count));
   }
 
@@ -152,10 +151,12 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
    * @covers ::finished
    */
   public function testFinished() {
-    TestViewsBulkOperationsBatch::finished(TRUE, ['Some operation', 'Some operation'], []);
+    $results = ['operations' => ['Some operation', 'Some operation']];
+    TestViewsBulkOperationsBatch::finished(TRUE, $results, []);
     $this->assertEquals(TestViewsBulkOperationsBatch::message(), 'Action processing results: Some operation (2).');
 
-    TestViewsBulkOperationsBatch::finished(TRUE, ['Some operation1', 'Some operation2'], []);
+    $results = ['operations' => ['Some operation1', 'Some operation2']];
+    TestViewsBulkOperationsBatch::finished(TRUE, $results, []);
     $this->assertEquals(TestViewsBulkOperationsBatch::message(), 'Action processing results: Some operation1 (1), Some operation2 (1).');
   }
 

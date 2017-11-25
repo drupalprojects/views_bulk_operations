@@ -22,13 +22,73 @@ class ViewsBulkOperationsBatch {
   }
 
   /**
-   * Batch operation callback.
+   * Gets the list of entities to process.
+   *
+   * Used in "all results" batch operation.
+   *
+   * @param array $data
+   *   Processed view data.
+   * @param mixed $context
+   *   Batch context.
    */
-  public static function operation($list, $data, &$context) {
+  public static function getList(array $data, &$context) {
     // Initialize batch.
     if (empty($context['sandbox'])) {
       $context['sandbox']['processed'] = 0;
-      $context['results'] = [];
+      $context['results']['list'] = [];
+    }
+
+    $actionProcessor = \Drupal::service('views_bulk_operations.processor');
+    $actionProcessor->initialize($data);
+
+    // Populate queue.
+    $count = $actionProcessor->populateQueue([], $context);
+    if ($count) {
+      foreach ($actionProcessor->getQueue() as $index => $entity) {
+        $item = [
+          $index,
+          $entity->language()->getId(),
+          $entity->getEntityTypeId(),
+          $entity->id(),
+        ];
+        $context['results']['list'][] = $item;
+      }
+
+      $context['finished'] = 0;
+      // There may be cases where we don't know the total number of
+      // results (e.g. mini pager with a search_api view)
+      if ($context['sandbox']['total']) {
+        $context['finished'] = $context['sandbox']['processed'] / $context['sandbox']['total'];
+        $context['message'] = static::t('Prepared @count of @total entities for processing.', [
+          '@count' => $context['sandbox']['processed'],
+          '@total' => $context['sandbox']['total'],
+        ]);
+      }
+      else {
+        $context['message'] = static::t('Prepared @count entities for processing.', [
+          '@count' => $context['sandbox']['processed'],
+        ]);
+      }
+    }
+
+  }
+
+  /**
+   * Batch operation callback.
+   */
+  public static function operation($data, &$context) {
+    // Initialize batch.
+    if (empty($context['sandbox'])) {
+      $context['sandbox']['processed'] = 0;
+      $context['results']['operations'] = [];
+    }
+
+    // Get list of entities to process.
+    if (isset($context['results']['list'])) {
+      $list = $context['results']['list'];
+    }
+    else {
+      $list = $data['list'];
     }
 
     // Get entities to process.
@@ -43,7 +103,7 @@ class ViewsBulkOperationsBatch {
         // Convert translatable markup to strings in order to allow
         // correct operation of array_count_values function.
         foreach ($batch_results as $result) {
-          $context['results'][] = (string) $result;
+          $context['results']['operations'][] = (string) $result;
         }
       }
       $context['sandbox']['processed'] += $count;
@@ -71,7 +131,7 @@ class ViewsBulkOperationsBatch {
    */
   public static function finished($success, $results, $operations) {
     if ($success) {
-      $operations = array_count_values($results);
+      $operations = array_count_values($results['operations']);
       $details = [];
       foreach ($operations as $op => $count) {
         $details[] = $op . ' (' . $count . ')';
@@ -91,21 +151,27 @@ class ViewsBulkOperationsBatch {
    * Batch builder function.
    */
   public static function getBatch($view_data) {
-    $results = $view_data['list'];
+    $current_class = get_called_class();
 
-    return [
+    $batch = [
       'title' => static::t('Performing @operation on selected entities.', ['@operation' => $view_data['action_label']]),
-      'operations' => [
-        [
-          ['\Drupal\views_bulk_operations\ViewsBulkOperationsBatch', 'operation'],
-          [
-            $results,
-            $view_data,
-          ],
-        ],
-      ],
-      'finished' => ['\Drupal\views_bulk_operations\ViewsBulkOperationsBatch', 'finished'],
+      'operations' => [],
+      'finished' => [$current_class, 'finished'],
     ];
+
+    if (empty($view_data['list'])) {
+      $batch['operations'][] = [
+        [$current_class, 'getList'],
+        [$view_data],
+      ];
+    }
+
+    $batch['operations'][] = [
+      [$current_class, 'operation'],
+      [$view_data],
+    ];
+
+    return $batch;
   }
 
 }

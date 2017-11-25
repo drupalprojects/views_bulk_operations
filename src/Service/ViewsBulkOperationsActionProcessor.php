@@ -93,7 +93,7 @@ class ViewsBulkOperationsActionProcessor {
    *
    * @var array
    */
-  protected $queue;
+  protected $queue = [];
 
   /**
    * Constructor.
@@ -126,6 +126,14 @@ class ViewsBulkOperationsActionProcessor {
    *   The current view object or NULL.
    */
   public function initialize(array $view_data, $view = NULL) {
+
+    // It may happen that the service was already initialized
+    // in this request (e.g. multiple Batch API operation calls).
+    // Clear the processing queue in such a case.
+    if ($this->initialized) {
+      $this->queue = [];
+    }
+
     if (!isset($view_data['configuration'])) {
       $view_data['configuration'] = [];
     }
@@ -181,7 +189,6 @@ class ViewsBulkOperationsActionProcessor {
    *   Batch API context.
    */
   public function populateQueue(array $list, array &$context = []) {
-    $this->queue = [];
 
     // Determine batch size and offset.
     if (!empty($context)) {
@@ -350,9 +357,9 @@ class ViewsBulkOperationsActionProcessor {
         $batch_results = $this->process();
       }
 
-      $results = [];
+      $results = ['operations' => []];
       foreach ($batch_results as $result) {
-        $results[] = (string) $result;
+        $results['operations'][] = (string) $result;
       }
       ViewsBulkOperationsBatch::finished(TRUE, $results, []);
     }
@@ -398,6 +405,16 @@ class ViewsBulkOperationsActionProcessor {
       }
     }
     $this->view->result = array_values($this->view->result);
+  }
+
+  /**
+   * Get the current entity queue.
+   *
+   * @return array
+   *   Array of entities from the current queue.
+   */
+  public function getQueue() {
+    return $this->queue;
   }
 
 }

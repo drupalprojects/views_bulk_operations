@@ -232,6 +232,21 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
       ));
     }
 
+    // Test the select all functionality with batching and entity
+    // property changes affecting view query results.
+    $edit = [
+      'action' => 'views_bulk_operations_advanced_test_action',
+      'select_all' => 1,
+    ];
+    $this->drupalPostForm(NULL, $edit, t('Apply to selected items'));
+    $this->drupalPostForm(NULL, ['test_config' => 'unpublish'], t('Apply'));
+    $this->drupalPostForm(NULL, [], t('Execute action'));
+    // Again, take offset into account (-1).
+    $assertSession->pageTextContains(
+      sprintf('Action processing results: Test (%d).', (count($this->testNodes) - 1)),
+      sprintf('Action has been executed on all %d nodes.', (count($this->testNodes) - 1))
+    );
+    $this->assertTrue(empty($this->cssSelect('table.views-table tr')), t("The view doesn't show any results."));
   }
 
 }
