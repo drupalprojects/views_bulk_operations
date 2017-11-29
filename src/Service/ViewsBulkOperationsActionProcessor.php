@@ -254,6 +254,9 @@ class ViewsBulkOperationsActionProcessor {
         }
       }
       if ($this->actionDefinition['pass_context']) {
+        // Add batch size to context array for potential use in actions.
+        $context['sandbox']['batch_size'] = $batch_size;
+
         $this->action->setContext($context);
       }
     }

@@ -33,7 +33,7 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
 
     $this->testNodes = [];
     $time = REQUEST_TIME;
-    for ($i = 0; $i < 10; $i++) {
+    for ($i = 0; $i < 15; $i++) {
       // Ensure nodes are sorted in the same order they are inserted in the
       // array.
       $time -= $i;
@@ -247,6 +247,93 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
       sprintf('Action has been executed on all %d nodes.', (count($this->testNodes) - 1))
     );
     $this->assertTrue(empty($this->cssSelect('table.views-table tr')), t("The view doesn't show any results."));
+  }
+
+  /**
+   * View and context passing test.
+   *
+   * Uses the ViewsBulkOperationsPassTestAction.
+   */
+  public function testViewsBulkOperationsBulkFormPassing() {
+
+    $assertSession = $this->assertSession();
+
+    // Log in as a user with 'administer content' permission
+    // to have access to perform the test operation.
+    $admin_user = $this->drupalCreateUser(['bypass node access']);
+    $this->drupalLogin($admin_user);
+
+    // Test with all selected and specific selection, with batch
+    // size greater than items per page and lower than items per page,
+    // using Batch API process and without it.
+    $cases = [
+      ['batch' => FALSE, 'selection' => TRUE],
+      ['batch' => FALSE, 'selection' => FALSE],
+      ['batch' => TRUE, 'batch_size' => 3, 'selection' => TRUE],
+      ['batch' => TRUE, 'batch_size' => 7, 'selection' => TRUE],
+      ['batch' => TRUE, 'batch_size' => 3, 'selection' => FALSE],
+      ['batch' => TRUE, 'batch_size' => 7, 'selection' => FALSE],
+    ];
+
+    // Custom selection.
+    $selected = [0, 1, 3, 4];
+
+    $testViewConfig = \Drupal::service('config.factory')->getEditable('views.view.views_bulk_operations_test_advanced');
+    $configData = $testViewConfig->getRawData();
+    $configData['display']['default']['display_options']['pager']['options']['items_per_page'] = 5;
+
+    foreach ($cases as $case) {
+
+      // Populate form values.
+      $edit = [
+        'action' => 'views_bulk_operations_passing_test_action',
+      ];
+      if ($case['selection']) {
+        foreach ($selected as $index) {
+          $edit["views_bulk_operations_bulk_form[$index]"] = TRUE;
+        }
+      }
+      else {
+        $edit['select_all'] = 1;
+      }
+
+      // Update test view configuration.
+      $configData['display']['default']['display_options']['pager']['options']['items_per_page']++;
+      $configData['display']['default']['display_options']['fields']['views_bulk_operations_bulk_form']['batch'] = $case['batch'];
+      if (isset($case['batch_size'])) {
+        $configData['display']['default']['display_options']['fields']['views_bulk_operations_bulk_form']['batch_size'] = $case['batch_size'];
+      }
+      $testViewConfig->setData($configData);
+      $testViewConfig->save();
+
+      $this->drupalGet('views-bulk-operations-test-advanced');
+      $this->drupalPostForm(NULL, $edit, t('Apply to selected items'));
+
+      // On batch-enabled processes check if provided context data is correct.
+      if ($case['batch']) {
+        if ($case['selection']) {
+          $total = count($selected);
+        }
+        else {
+          // Again, include offset.
+          $total = count($this->testNodes) - 1;
+        }
+        $n_batches = ceil($total / $case['batch_size']);
+
+        for ($i = 0; $i < $n_batches; $i++) {
+          $processed = $i * $case['batch_size'];
+          $assertSession->pageTextContains(sprintf(
+            'Processed %s of %s.',
+            $processed,
+            $total
+          ), 'The correct processed info message appears.');
+        }
+      }
+
+      // Passed view integrity check.
+      $assertSession->pageTextContains('Passed view results match the entity queue.');
+    }
+
   }
 
 }
