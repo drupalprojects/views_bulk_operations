@@ -14,7 +14,7 @@ use Drupal\views_bulk_operations\ViewsBulkOperationsEvent;
 /**
  * Gets Views data needed by VBO.
  */
-class ViewsbulkOperationsViewData {
+class ViewsBulkOperationsViewData {
 
   /**
    * Event dispatcher service.
