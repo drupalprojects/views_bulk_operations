@@ -2,6 +2,8 @@
 
 namespace Drupal\views_bulk_operations;
 
+use Drupal\Core\Url;
+
 /**
  * Defines module Batch API methods.
  */
@@ -35,7 +37,7 @@ class ViewsBulkOperationsBatch {
     // Initialize batch.
     if (empty($context['sandbox'])) {
       $context['sandbox']['processed'] = 0;
-      $context['results']['list'] = [];
+      $context['results'] = $data;
     }
 
     $actionProcessor = \Drupal::service('views_bulk_operations.processor');
@@ -74,6 +76,21 @@ class ViewsBulkOperationsBatch {
   }
 
   /**
+   * Save generated list to user tempstore.
+   */
+  public static function saveList($success, $results, $operations) {
+    if ($success) {
+      $results['redirect_url'] = $results['redirect_after_processing'];
+      unset($results['redirect_after_processing']);
+      $tempstore_factory = \Drupal::service('user.private_tempstore');
+      $current_user = \Drupal::service('current_user');
+      $tempstore_name = 'views_bulk_operations_' . $results['view_id'] . '_' . $results['display_id'];
+      $results['prepopulated'] = TRUE;
+      $tempstore_factory->get($tempstore_name)->set($current_user->id(), $results);
+    }
+  }
+
+  /**
    * Batch operation callback.
    */
   public static function operation($data, &$context) {
@@ -83,20 +100,12 @@ class ViewsBulkOperationsBatch {
       $context['results']['operations'] = [];
     }
 
-    // Get list of entities to process.
-    if (isset($context['results']['list'])) {
-      $list = $context['results']['list'];
-    }
-    else {
-      $list = $data['list'];
-    }
-
     // Get entities to process.
     $actionProcessor = \Drupal::service('views_bulk_operations.processor');
     $actionProcessor->initialize($data);
 
     // Do the processing.
-    $count = $actionProcessor->populateQueue($list, $context);
+    $count = $actionProcessor->populateQueue($data['list'], $context);
     if ($count) {
       $batch_results = $actionProcessor->process();
       if (!empty($batch_results)) {
@@ -150,27 +159,46 @@ class ViewsBulkOperationsBatch {
   /**
    * Batch builder function.
    */
-  public static function getBatch($view_data) {
+  public static function getBatch(&$view_data) {
     $current_class = get_called_class();
 
-    $batch = [
-      'title' => static::t('Performing @operation on selected entities.', ['@operation' => $view_data['action_label']]),
-      'operations' => [],
-      'finished' => [$current_class, 'finished'],
-      'progress_message' => static::t('Processing, estimated time left: @estimate, elapsed: @elapsed.'),
-    ];
-
+    // Prepopulate results.
     if (empty($view_data['list'])) {
-      $batch['operations'][] = [
-        [$current_class, 'getList'],
-        [$view_data],
+      // Redirect this batch to the processing URL and set
+      // previous redirect under a different key for later use.
+      $view_data['redirect_after_processing'] = $view_data['redirect_url'];
+      $view_data['redirect_url'] = Url::fromRoute('views_bulk_operations.execute_batch', [
+        'view_id' => $view_data['view_id'],
+        'display_id' => $view_data['display_id'],
+      ]);
+
+      $batch = [
+        'title' => static::t('Prepopulating entity list for processing.'),
+        'operations' => [
+          [
+            [$current_class, 'getList'],
+            [$view_data],
+          ],
+        ],
+        'progress_message' => static::t('Prepopulating, estimated time left: @estimate, elapsed: @elapsed.'),
+        'finished' => [$current_class, 'saveList'],
       ];
     }
 
-    $batch['operations'][] = [
-      [$current_class, 'operation'],
-      [$view_data],
-    ];
+    // Execute action.
+    else {
+      $batch = [
+        'title' => static::t('Performing @operation on selected entities.', ['@operation' => $view_data['action_label']]),
+        'operations' => [
+          [
+            [$current_class, 'operation'],
+            [$view_data],
+          ],
+        ],
+        'progress_message' => static::t('Processing, estimated time left: @estimate, elapsed: @elapsed.'),
+        'finished' => [$current_class, 'finished'],
+      ];
+    }
 
     return $batch;
   }

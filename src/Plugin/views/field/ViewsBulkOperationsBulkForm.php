@@ -294,7 +294,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $form['batch_size'] = [
       '#title' => $this->t('Batch size'),
       '#type' => 'number',
-      '#min' => 0,
+      '#min' => 1,
       '#step' => 1,
       '#description' => $this->t('Only applicable if results are processed in a batch operation.'),
       '#default_value' => $this->options['batch_size'],

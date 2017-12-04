@@ -167,9 +167,9 @@ class ConfigureAction extends FormBase {
       ]);
     }
     else {
-      $form_state->setRedirectUrl($form_data['redirect_url']);
-      $this->actionProcessor->executeProcessing($form_data);
       $this->tempStoreFactory->get($form_data['tempstore_name'])->delete($this->currentUser()->id());
+      $this->actionProcessor->executeProcessing($form_data);
+      $form_state->setRedirectUrl($form_data['redirect_url']);
     }
   }
 

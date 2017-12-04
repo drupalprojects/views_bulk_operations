@@ -67,7 +67,7 @@ class ViewsBulkOperationsBatchTest extends UnitTestCase {
    */
   public function testGetBatch() {
     $data = [
-      'list' => [],
+      'list' => [[0, 'en', 'node', 1]],
       'some_data' => [],
       'action_label' => '',
     ];
