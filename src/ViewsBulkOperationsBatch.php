@@ -56,6 +56,7 @@ class ViewsBulkOperationsBatch {
         $context['results']['list'][] = $item;
       }
 
+      $context['sandbox']['processed'] += $count;
       $context['finished'] = 0;
       // There may be cases where we don't know the total number of
       // results (e.g. mini pager with a search_api view)

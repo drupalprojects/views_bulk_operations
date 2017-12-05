@@ -184,10 +184,10 @@ class ViewsBulkOperationsActionProcessor {
    *
    * @param array $list
    *   Array of selected view results.
-   * @param array $context
+   * @param mixed $context
    *   Batch API context.
    */
-  public function populateQueue(array $list, array &$context = []) {
+  public function populateQueue(array $list, &$context = []) {
 
     // Determine batch size and offset.
     if (!empty($context)) {
@@ -275,10 +275,10 @@ class ViewsBulkOperationsActionProcessor {
   /**
    * Set action context if action method exists.
    *
-   * @param array $context
+   * @param mixed $context
    *   The context to be set.
    */
-  public function setActionContext(array $context) {
+  public function setActionContext($context) {
     if (isset($this->action) && method_exists($this->action, 'setContext')) {
       $this->action->setContext($context);
     }
@@ -396,12 +396,12 @@ class ViewsBulkOperationsActionProcessor {
    *
    * @param array $list
    *   User selection data.
-   * @param array $context
+   * @param mixed $context
    *   Batch API context.
    * @param int $current_batch
    *   The current batch index.
    */
-  protected function populateViewResult(array $list, array $context, $current_batch) {
+  protected function populateViewResult(array $list, $context, $current_batch) {
     if (!empty($this->bulkFormData['prepopulated'])) {
       $this->view->setItemsPerPage($this->bulkFormData['batch_size']);
       $this->view->setCurrentPage($current_batch);
