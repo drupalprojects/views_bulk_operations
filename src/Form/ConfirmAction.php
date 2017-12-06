@@ -7,7 +7,7 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
-use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
+use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessorInterface;
 
 /**
  * Action configuration form.
@@ -33,7 +33,7 @@ class ConfirmAction extends FormBase {
   /**
    * Views Bulk Operations action processor.
    *
-   * @var \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor
+   * @var \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessorInterface
    */
   protected $actionProcessor;
 
@@ -44,10 +44,14 @@ class ConfirmAction extends FormBase {
    *   User private temporary storage factory.
    * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager $actionManager
    *   Extended action manager object.
-   * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor $actionProcessor
+   * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessorInterface $actionProcessor
    *   Views Bulk Operations action processor.
    */
-  public function __construct(PrivateTempStoreFactory $tempStoreFactory, ViewsBulkOperationsActionManager $actionManager, ViewsBulkOperationsActionProcessor $actionProcessor) {
+  public function __construct(
+    PrivateTempStoreFactory $tempStoreFactory,
+    ViewsBulkOperationsActionManager $actionManager,
+    ViewsBulkOperationsActionProcessorInterface $actionProcessor
+  ) {
     $this->tempStoreFactory = $tempStoreFactory;
     $this->actionManager = $actionManager;
     $this->actionProcessor = $actionProcessor;

@@ -59,7 +59,14 @@ class CancelUserAction extends ViewsBulkOperationsActionBase implements Containe
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    *   Module handler service.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, AccountInterface $currentUser, ConfigFactoryInterface $configFactory, ModuleHandlerInterface $moduleHandler) {
+  public function __construct(
+    array $configuration,
+    $plugin_id,
+    $plugin_definition,
+    AccountInterface $currentUser,
+    ConfigFactoryInterface $configFactory,
+    ModuleHandlerInterface $moduleHandler
+  ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->currentUser = $currentUser;
     $this->userConfig = $configFactory->get('user.settings');

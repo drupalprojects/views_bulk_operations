@@ -4,7 +4,7 @@ namespace Drupal\views_bulk_operations\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
-use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor;
+use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessorInterface;
 use Drupal\user\PrivateTempStoreFactory;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -23,7 +23,7 @@ class ViewsBulkOperationsController extends ControllerBase implements ContainerI
   /**
    * Views Bulk Operations action processor.
    *
-   * @var \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor
+   * @var \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessorInterface
    */
   protected $actionProcessor;
 
@@ -32,10 +32,13 @@ class ViewsBulkOperationsController extends ControllerBase implements ContainerI
    *
    * @param \Drupal\user\PrivateTempStoreFactory $tempStoreFactory
    *   User private temporary storage factory.
-   * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessor $actionProcessor
+   * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessorInterface $actionProcessor
    *   Views Bulk Operations action processor.
    */
-  public function __construct(PrivateTempStoreFactory $tempStoreFactory, ViewsBulkOperationsActionProcessor $actionProcessor) {
+  public function __construct(
+    PrivateTempStoreFactory $tempStoreFactory,
+    ViewsBulkOperationsActionProcessorInterface $actionProcessor
+  ) {
     $this->tempStoreFactory = $tempStoreFactory;
     $this->actionProcessor = $actionProcessor;
   }

@@ -14,14 +14,14 @@ use Drupal\views_bulk_operations\ViewsBulkOperationsBatch;
 /**
  * Defines VBO action processor.
  */
-class ViewsBulkOperationsActionProcessor {
+class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionProcessorInterface {
 
   use StringTranslationTrait;
 
   /**
    * View data provider service.
    *
-   * @var \Drupal\views_bulk_operations\ViewsbulkOperationsViewData
+   * @var \Drupal\views_bulk_operations\Service\ViewsbulkOperationsViewDataInterface
    */
   protected $viewDataService;
 
@@ -98,7 +98,7 @@ class ViewsBulkOperationsActionProcessor {
   /**
    * Constructor.
    *
-   * @param \Drupal\views_bulk_operations\ViewsbulkOperationsViewData $viewDataService
+   * @param \Drupal\views_bulk_operations\Service\ViewsbulkOperationsViewDataInterface $viewDataService
    *   View data provider service.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
    *   Entity type manager.
@@ -109,7 +109,13 @@ class ViewsBulkOperationsActionProcessor {
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    *   Module handler service.
    */
-  public function __construct(ViewsbulkOperationsViewData $viewDataService, EntityTypeManagerInterface $entityTypeManager, ViewsBulkOperationsActionManager $actionManager, AccountProxyInterface $user, ModuleHandlerInterface $moduleHandler) {
+  public function __construct(
+    ViewsbulkOperationsViewDataInterface $viewDataService,
+    EntityTypeManagerInterface $entityTypeManager,
+    ViewsBulkOperationsActionManager $actionManager,
+    AccountProxyInterface $user,
+    ModuleHandlerInterface $moduleHandler
+  ) {
     $this->viewDataService = $viewDataService;
     $this->entityTypeManager = $entityTypeManager;
     $this->actionManager = $actionManager;
@@ -118,12 +124,7 @@ class ViewsBulkOperationsActionProcessor {
   }
 
   /**
-   * Set values.
-   *
-   * @param array $view_data
-   *   Data concerning the view that will be processed.
-   * @param mixed $view
-   *   The current view object or NULL.
+   * {@inheritdoc}
    */
   public function initialize(array $view_data, $view = NULL) {
 
@@ -180,14 +181,9 @@ class ViewsBulkOperationsActionProcessor {
   }
 
   /**
-   * Populate entity queue for processing.
-   *
-   * @param array $list
-   *   Array of selected view results.
-   * @param mixed $context
-   *   Batch API context.
+   * {@inheritdoc}
    */
-  public function populateQueue(array $list, &$context = []) {
+  public function populateQueue(array $list, array &$context = []) {
 
     // Determine batch size and offset.
     if (!empty($context)) {
@@ -273,19 +269,16 @@ class ViewsBulkOperationsActionProcessor {
   }
 
   /**
-   * Set action context if action method exists.
-   *
-   * @param mixed $context
-   *   The context to be set.
+   * {@inheritdoc}
    */
-  public function setActionContext($context) {
+  public function setActionContext(array $context) {
     if (isset($this->action) && method_exists($this->action, 'setContext')) {
       $this->action->setContext($context);
     }
   }
 
   /**
-   * Process result.
+   * {@inheritdoc}
    */
   public function process() {
     $output = [];
@@ -335,12 +328,7 @@ class ViewsBulkOperationsActionProcessor {
   }
 
   /**
-   * Helper function for processing results from view data.
-   *
-   * @param array $data
-   *   Data concerning the view that will be processed.
-   * @param mixed $view
-   *   The current view object or NULL.
+   * {@inheritdoc}
    */
   public function executeProcessing(array &$data, $view = NULL) {
     if ($data['batch']) {
@@ -372,9 +360,9 @@ class ViewsBulkOperationsActionProcessor {
   }
 
   /**
-   * Get entity for processing.
+   * {@inheritdoc}
    */
-  public function getEntity($entity_data) {
+  public function getEntity(array $entity_data) {
     if (!isset($entity_data[4])) {
       $entity_data[4] = FALSE;
     }
@@ -396,12 +384,12 @@ class ViewsBulkOperationsActionProcessor {
    *
    * @param array $list
    *   User selection data.
-   * @param mixed $context
+   * @param array $context
    *   Batch API context.
    * @param int $current_batch
    *   The current batch index.
    */
-  protected function populateViewResult(array $list, $context, $current_batch) {
+  protected function populateViewResult(array $list, array $context, $current_batch) {
     if (!empty($this->bulkFormData['prepopulated'])) {
       $this->view->setItemsPerPage($this->bulkFormData['batch_size']);
       $this->view->setCurrentPage($current_batch);
@@ -437,10 +425,7 @@ class ViewsBulkOperationsActionProcessor {
   }
 
   /**
-   * Get the current entity queue.
-   *
-   * @return array
-   *   Array of entities from the current queue.
+   * {@inheritdoc}
    */
   public function getQueue() {
     return $this->queue;

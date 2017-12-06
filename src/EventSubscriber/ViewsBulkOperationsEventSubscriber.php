@@ -3,7 +3,7 @@
 namespace Drupal\views_bulk_operations\EventSubscriber;
 
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Drupal\views_bulk_operations\Service\ViewsbulkOperationsViewData;
+use Drupal\views_bulk_operations\Service\ViewsBulkOperationsViewDataInterface;
 use Drupal\views_bulk_operations\ViewsBulkOperationsEvent;
 
 /**
@@ -20,17 +20,17 @@ class ViewsBulkOperationsEventSubscriber implements EventSubscriberInterface {
   /**
    * Object that gets the current view data.
    *
-   * @var \Drupal\views_bulk_operations\ViewsbulkOperationsViewData
+   * @var \Drupal\views_bulk_operations\ViewsBulkOperationsViewDataInterface
    */
   protected $viewData;
 
   /**
    * Object constructor.
    *
-   * @param \Drupal\views_bulk_operations\Service\ViewsbulkOperationsViewData $viewData
+   * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsViewDataInterface $viewData
    *   The VBO View Data provider service.
    */
-  public function __construct(ViewsbulkOperationsViewData $viewData) {
+  public function __construct(ViewsBulkOperationsViewDataInterface $viewData) {
     $this->viewData = $viewData;
   }
 

@@ -14,7 +14,7 @@ use Drupal\views_bulk_operations\ViewsBulkOperationsEvent;
 /**
  * Gets Views data needed by VBO.
  */
-class ViewsBulkOperationsViewData {
+class ViewsBulkOperationsViewData implements ViewsBulkOperationsViewDataInterface {
 
   /**
    * Event dispatcher service.
@@ -73,20 +73,16 @@ class ViewsBulkOperationsViewData {
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    *   Module handler service.
    */
-  public function __construct(EventDispatcherInterface $eventDispatcher, ModuleHandlerInterface $moduleHandler) {
+  public function __construct(
+    EventDispatcherInterface $eventDispatcher,
+    ModuleHandlerInterface $moduleHandler
+  ) {
     $this->eventDispatcher = $eventDispatcher;
     $this->moduleHandler = $moduleHandler;
   }
 
   /**
-   * Initialize additional variables.
-   *
-   * @param \Drupal\views\ViewExecutable $view
-   *   The view object.
-   * @param \Drupal\views\Plugin\views\display\DisplayPluginBase $display
-   *   The current display plugin.
-   * @param string $relationship
-   *   Relationship ID.
+   * {@inheritdoc}
    */
   public function init(ViewExecutable $view, DisplayPluginBase $display, $relationship) {
     $this->view = $view;
@@ -101,10 +97,7 @@ class ViewsBulkOperationsViewData {
   }
 
   /**
-   * Get entity type IDs.
-   *
-   * @return array
-   *   Array of entity type IDs.
+   * {@inheritdoc}
    */
   public function getEntityTypeIds() {
     return $this->entityTypeIds;
@@ -132,24 +125,7 @@ class ViewsBulkOperationsViewData {
   }
 
   /**
-   * Get ID of the entity type associated with the view.
-   *
-   * @return string
-   *   Entity type ID.
-   */
-  public function getEntityTypeId() {
-    $views_data = $this->getData();
-    if (isset($views_data['table']['entity type'])) {
-      return $views_data['table']['entity type'];
-    }
-    return FALSE;
-  }
-
-  /**
-   * Get view provider.
-   *
-   * @return string
-   *   View provider ID.
+   * {@inheritdoc}
    */
   public function getViewProvider() {
     $views_data = $this->getData();
@@ -160,13 +136,7 @@ class ViewsBulkOperationsViewData {
   }
 
   /**
-   * Get entity from views row.
-   *
-   * @param \Drupal\views\ResultRow $row
-   *   Views row object.
-   *
-   * @return \Drupal\Core\Entity\EntityInterface
-   *   An entity object.
+   * {@inheritdoc}
    */
   public function getEntity(ResultRow $row) {
     if (!empty($this->entityGetter['file'])) {
@@ -228,19 +198,7 @@ class ViewsBulkOperationsViewData {
   }
 
   /**
-   * The default entity getter function.
-   *
-   * Works well with standard core entity views.
-   *
-   * @param \Drupal\views\ResultRow $row
-   *   Views result row.
-   * @param string $relationship_id
-   *   Id of the view relationship.
-   * @param \Drupal\views\ViewExecutable $view
-   *   The current view object.
-   *
-   * @return \Drupal\Core\Entity\FieldableEntityInterface
-   *   The translated entity.
+   * {@inheritdoc}
    */
   public function getEntityDefault(ResultRow $row, $relationship_id, ViewExecutable $view) {
     if ($relationship_id == 'none') {

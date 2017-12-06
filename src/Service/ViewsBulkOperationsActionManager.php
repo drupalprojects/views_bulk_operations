@@ -36,17 +36,22 @@ class ViewsBulkOperationsActionManager extends ActionManager {
    * @param \Traversable $namespaces
    *   An object that implements \Traversable which contains the root paths
    *   keyed by the corresponding namespace to look for plugin implementations.
-   * @param \Drupal\Core\Cache\CacheBackendInterface $cache_backend
+   * @param \Drupal\Core\Cache\CacheBackendInterface $cacheBackend
    *   Cache backend instance to use.
-   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    *   The module handler to invoke the alter hook with.
    * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
    *   The event dispatcher service.
    */
-  public function __construct(\Traversable $namespaces, CacheBackendInterface $cache_backend, ModuleHandlerInterface $module_handler, EventDispatcherInterface $eventDispatcher) {
-    parent::__construct($namespaces, $cache_backend, $module_handler);
+  public function __construct(
+    \Traversable $namespaces,
+    CacheBackendInterface $cacheBackend,
+    ModuleHandlerInterface $moduleHandler,
+    EventDispatcherInterface $eventDispatcher
+  ) {
+    parent::__construct($namespaces, $cacheBackend, $moduleHandler);
     $this->eventDispatcher = $eventDispatcher;
-    $this->setCacheBackend($cache_backend, 'views_bulk_operations_action_info');
+    $this->setCacheBackend($cacheBackend, 'views_bulk_operations_action_info');
   }
 
   /**
