@@ -12,7 +12,7 @@ use Drupal\Core\Session\AccountInterface;
  *   id = "views_bulk_operations_delete_entity",
  *   label = @Translation("Delete selected entities"),
  *   type = "",
- *   confirm = TRUE
+ *   confirm = TRUE,
  * )
  */
 class EntityDeleteAction extends ViewsBulkOperationsActionBase {

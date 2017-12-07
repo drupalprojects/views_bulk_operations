@@ -10,7 +10,10 @@ use Symfony\Component\EventDispatcher\Event;
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 
 /**
- * Allow VBO actions to define additional configuration.
+ * Defines Views Bulk Operations action manager.
+ *
+ * Extends the core Action Manager to allow VBO actions
+ * define additional configuration.
  */
 class ViewsBulkOperationsActionManager extends ActionManager {
 
@@ -73,14 +76,14 @@ class ViewsBulkOperationsActionManager extends ActionManager {
       }
     }
     $this->alterDefinitions($definitions);
-    // If this plugin was provided by a module that does not exist, remove the
-    // plugin definition.
     foreach ($definitions as $plugin_id => $plugin_definition) {
       // If the plugin definition is an object, attempt to convert it to an
       // array, if that is not possible, skip further processing.
       if (is_object($plugin_definition) && !($plugin_definition = (array) $plugin_definition)) {
         continue;
       }
+      // If this plugin was provided by a module that does not exist, remove the
+      // plugin definition.
       if (isset($plugin_definition['provider']) && !in_array($plugin_definition['provider'], ['core', 'component']) && !$this->providerExists($plugin_definition['provider'])) {
         unset($definitions[$plugin_id]);
       }
@@ -126,7 +129,8 @@ class ViewsBulkOperationsActionManager extends ActionManager {
    *   Thrown if $plugin_id is invalid and $exception_on_invalid is TRUE.
    */
   public function getDefinition($plugin_id, $exception_on_invalid = TRUE, array $parameters = []) {
-    // Loading all definitions here will not hurt much, as they're cached.
+    // Loading all definitions here will not hurt much, as they're cached,
+    // and we need the option to alter a definition.
     $definitions = $this->getDefinitions($parameters);
     if (isset($definitions[$plugin_id])) {
       return $definitions[$plugin_id];

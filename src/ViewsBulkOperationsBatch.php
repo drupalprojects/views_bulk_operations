@@ -11,6 +11,8 @@ class ViewsBulkOperationsBatch {
 
   /**
    * Translation function wrapper.
+   *
+   * @see \Drupal\Core\StringTranslation\TranslationInterface:translate()
    */
   public static function t($string, array $args = [], array $options = []) {
     return \Drupal::translation()->translate($string, $args, $options);
@@ -18,6 +20,8 @@ class ViewsBulkOperationsBatch {
 
   /**
    * Set message function wrapper.
+   *
+   * @see \drupal_set_message()
    */
   public static function message($message = NULL, $type = 'status', $repeat = TRUE) {
     drupal_set_message($message, $type, $repeat);
@@ -30,10 +34,10 @@ class ViewsBulkOperationsBatch {
    *
    * @param array $data
    *   Processed view data.
-   * @param mixed $context
+   * @param array $context
    *   Batch context.
    */
-  public static function getList(array $data, &$context) {
+  public static function getList(array $data, array &$context) {
     // Initialize batch.
     if (empty($context['sandbox'])) {
       $context['sandbox']['processed'] = 0;
@@ -78,8 +82,15 @@ class ViewsBulkOperationsBatch {
 
   /**
    * Save generated list to user tempstore.
+   *
+   * @param bool $success
+   *   Was the process successfull?
+   * @param array $results
+   *   Batch process results array.
+   * @param array $operations
+   *   Performed operations array.
    */
-  public static function saveList($success, $results, $operations) {
+  public static function saveList($success, array $results, array $operations) {
     if ($success) {
       $results['redirect_url'] = $results['redirect_after_processing'];
       unset($results['redirect_after_processing']);
@@ -93,8 +104,13 @@ class ViewsBulkOperationsBatch {
 
   /**
    * Batch operation callback.
+   *
+   * @param array $data
+   *   Processed view data.
+   * @param array $context
+   *   Batch context.
    */
-  public static function operation($data, &$context) {
+  public static function operation(array $data, array &$context) {
     // Initialize batch.
     if (empty($context['sandbox'])) {
       $context['sandbox']['processed'] = 0;
@@ -138,8 +154,15 @@ class ViewsBulkOperationsBatch {
 
   /**
    * Batch finished callback.
+   *
+   * @param bool $success
+   *   Was the process successfull?
+   * @param array $results
+   *   Batch process results array.
+   * @param array $operations
+   *   Performed operations array.
    */
-  public static function finished($success, $results, $operations) {
+  public static function finished($success, array $results, array $operations) {
     if ($success) {
       $operations = array_count_values($results['operations']);
       $details = [];
@@ -159,8 +182,11 @@ class ViewsBulkOperationsBatch {
 
   /**
    * Batch builder function.
+   *
+   * @param array $view_data
+   *   Processed view data.
    */
-  public static function getBatch(&$view_data) {
+  public static function getBatch(array &$view_data) {
     $current_class = get_called_class();
 
     // Prepopulate results.

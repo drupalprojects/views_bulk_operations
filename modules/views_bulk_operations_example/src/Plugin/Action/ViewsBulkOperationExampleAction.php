@@ -20,7 +20,7 @@ use Drupal\Core\Session\AccountInterface;
  *   type = "",
  *   confirm = TRUE,
  *   pass_context = TRUE,
- *   pass_view = TRUE
+ *   pass_view = TRUE,
  * )
  */
 class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase implements ViewsBulkOperationsPreconfigurationInterface, PluginFormInterface {

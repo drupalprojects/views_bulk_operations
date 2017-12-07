@@ -10,7 +10,7 @@ use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessorInterface;
 
 /**
- * Action configuration form.
+ * Default action execution confirmation form.
  */
 class ConfirmAction extends FormBase {
 
@@ -72,7 +72,7 @@ class ConfirmAction extends FormBase {
    * {@inheritdoc}
    */
   public function getFormId() {
-    return __CLASS__;
+    return 'views_bulk_operations_confirm_action';
   }
 
   /**

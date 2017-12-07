@@ -72,7 +72,7 @@ class ConfigureAction extends FormBase {
    * {@inheritdoc}
    */
   public function getFormId() {
-    return __CLASS__;
+    return 'views_bulk_operations_configure_action';
   }
 
   /**

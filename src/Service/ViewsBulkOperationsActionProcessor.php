@@ -340,12 +340,7 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
 
       // Populate and process queue.
       if (!$this->initialized) {
-        if (empty($list)) {
-          $this->initialize($data);
-        }
-        else {
-          $this->initialize($data, $view);
-        }
+        $this->initialize($data, $view);
       }
       if ($this->populateQueue($list)) {
         $batch_results = $this->process();

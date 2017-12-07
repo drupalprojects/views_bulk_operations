@@ -3,10 +3,10 @@
 namespace Drupal\views_bulk_operations\Plugin\views\field;
 
 use Drupal\Core\Cache\CacheableDependencyInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\RevisionableInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Routing\RedirectDestinationTrait;
 use Drupal\views\Plugin\views\display\DisplayPluginBase;
 use Drupal\views\Plugin\views\field\FieldPluginBase;
@@ -23,29 +23,16 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
 
 /**
- * Defines a actions-based bulk operation form element.
+ * Defines the Views Bulk Operations field plugin.
+ *
+ * @ingroup views_field_handlers
  *
  * @ViewsField("views_bulk_operations_bulk_form")
- * @class
  */
-class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDependencyInterface {
+class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDependencyInterface, ContainerFactoryPluginInterface {
 
   use RedirectDestinationTrait;
   use UncacheableFieldHandlerTrait;
-
-  /**
-   * The entity manager.
-   *
-   * @var \Drupal\Core\Entity\EntityManagerInterface
-   */
-  protected $entityManager;
-
-  /**
-   * The language manager.
-   *
-   * @var \Drupal\Core\Language\LanguageManagerInterface
-   */
-  protected $languageManager;
 
   /**
    * Object that gets the current view data.
@@ -122,8 +109,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    *   The plugin ID for the plugin instance.
    * @param mixed $plugin_definition
    *   The plugin implementation definition.
-   * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
-   *   The language manager.
    * @param \Drupal\views_bulk_operations\Service\ViewsbulkOperationsViewDataInterface $viewData
    *   The VBO View Data provider service.
    * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager $actionManager
@@ -139,7 +124,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     array $configuration,
     $plugin_id,
     $plugin_definition,
-    LanguageManagerInterface $language_manager,
     ViewsbulkOperationsViewDataInterface $viewData,
     ViewsBulkOperationsActionManager $actionManager,
     ViewsBulkOperationsActionProcessorInterface $actionProcessor,
@@ -148,7 +132,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
-    $this->languageManager = $language_manager;
     $this->viewData = $viewData;
     $this->actionManager = $actionManager;
     $this->actionProcessor = $actionProcessor;
@@ -164,7 +147,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $container->get('language_manager'),
       $container->get('views_bulk_operations.data'),
       $container->get('plugin.manager.views_bulk_operations_action'),
       $container->get('views_bulk_operations.processor'),
@@ -224,27 +206,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    */
   public function getCacheTags() {
     return [];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function getEntityManager() {
-    return $this->entityManager;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function getLanguageManager() {
-    return $this->languageManager;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function getView() {
-    return $this->view;
   }
 
   /**
@@ -657,11 +618,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       ];
 
       if (!$form_state->getValue('select_all')) {
-        // We get selected items from user input as
-        // in \Drupal\system\Plugin\views\field\BulkForm.
-        // TODO: Check if this is necessary.
-        $user_input = $form_state->getUserInput();
-        $selected = array_values(array_filter($user_input[$this->options['id']]));
+        $selected = array_filter($form_state->getValue($this->options['id']));
         $selected_indexes = [];
         foreach ($selected as $bulk_form_key) {
           $item = json_decode(base64_decode($bulk_form_key));
@@ -721,7 +678,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           'display_id' => $this->view->current_display,
         ]);
       }
-      // Or process rows here.
+      // Or process rows here and now.
       else {
         $this->actionProcessor->executeProcessing($this->tempStoreData, $this->view);
       }
