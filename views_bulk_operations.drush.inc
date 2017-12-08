@@ -52,18 +52,14 @@ function drush_views_bulk_operations_execute($view_id, $action_id) {
     $arguments = explode('/', $arguments);
   }
 
-  $kv_config = [
+  $qs_config = [
     'config' => [],
     'exposed' => [],
   ];
-  foreach ($kv_config as $name => $value) {
+  foreach ($qs_config as $name => $value) {
     $config_data = drush_get_option($name, []);
     if (!empty($config_data)) {
-      $parts = explode('&', $config_data);
-      foreach ($parts as $part) {
-        list($key, $value) = explode('=', $part);
-        $kv_config[$name][$key] = $value;
-      }
+      parse_str($config_data, $qs_config[$name]);
     }
   }
 
@@ -72,10 +68,10 @@ function drush_views_bulk_operations_execute($view_id, $action_id) {
     'view_id' => $view_id,
     'display_id' => drush_get_option('display-id', 'default'),
     'action_id' => $action_id,
-    'preconfiguration' => $kv_config['config'],
+    'preconfiguration' => $qs_config['config'],
     'batch' => TRUE,
     'arguments' => $arguments,
-    'exposed_input' => $kv_config['exposed'],
+    'exposed_input' => $qs_config['exposed'],
     'batch_size' => drush_get_option('batch-size', 100),
     'relationship_id' => 'none',
   ];
