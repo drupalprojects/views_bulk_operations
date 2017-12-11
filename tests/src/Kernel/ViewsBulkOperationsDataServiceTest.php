@@ -5,6 +5,7 @@ namespace Drupal\Tests\views_bulk_operations\Kernel;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\simpletest\NodeCreationTrait;
 use Drupal\node\Entity\NodeType;
+use Drupal\user\Entity\User;
 use Drupal\views\Views;
 use Drupal\language\Entity\ConfigurableLanguage;
 
@@ -64,14 +65,25 @@ class ViewsBulkOperationsDataServiceTest extends KernelTestBase {
   public function setUp() {
     parent::setUp();
 
+    $this->installEntitySchema('user');
+    $this->installEntitySchema('node');
+    $this->installSchema('node', 'node_access');
+    $this->installSchema('system', 'sequences');
+    $this->installSchema('system', 'key_value_expire');
+
+    $user = User::create();
+    $user->setPassword('password');
+    $user->enforceIsNew();
+    $user->setEmail('email');
+    $user->setUsername('user_name');
+    $user->save();
+    user_login_finalize($user);
+
     $this->installConfig([
       'filter',
       'views_bulk_operations_test',
       'language',
     ]);
-    $this->installEntitySchema('user');
-    $this->installEntitySchema('node');
-    $this->installSchema('node', 'node_access');
 
     $languages = ['pl', 'es', 'it', 'fr', 'de'];
     $count_languages = count($languages);
@@ -125,6 +137,7 @@ class ViewsBulkOperationsDataServiceTest extends KernelTestBase {
    * @covers ::getEntityDefault
    */
   public function testViewsbulkOperationsViewDataEntityGetter() {
+    $this->assertTrue(TRUE);
     // Initialize and execute the test view with all items displayed.
     $view = Views::getView('views_bulk_operations_test');
     $view->setDisplay('page_1');

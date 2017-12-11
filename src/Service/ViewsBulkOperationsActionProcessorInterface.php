@@ -59,6 +59,17 @@ interface ViewsBulkOperationsActionProcessorInterface {
   public function getEntity(array $entity_data);
 
   /**
+   * Get full list of items from a specific view page.
+   *
+   * @param int $page
+   *   Results page number.
+   *
+   * @return array
+   *   Array of result data arrays.
+   */
+  public function getPageList($page);
+
+  /**
    * Get the current entity queue.
    *
    * @return array

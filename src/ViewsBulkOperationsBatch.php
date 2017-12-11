@@ -41,6 +41,7 @@ class ViewsBulkOperationsBatch {
     // Initialize batch.
     if (empty($context['sandbox'])) {
       $context['sandbox']['processed'] = 0;
+      $context['sandbox']['page'] = 0;
       $context['results'] = $data;
     }
 
@@ -48,27 +49,21 @@ class ViewsBulkOperationsBatch {
     $actionProcessor->initialize($data);
 
     // Populate queue.
-    $count = $actionProcessor->populateQueue([], $context);
+    $list = $actionProcessor->getPageList($context['sandbox']['page']);
+    $count = count($list);
     if ($count) {
-      foreach ($actionProcessor->getQueue() as $index => $entity) {
-        $item = [
-          $index,
-          $entity->language()->getId(),
-          $entity->getEntityTypeId(),
-          $entity->id(),
-        ];
-        $context['results']['list'][] = $item;
-      }
+      $context['results']['list'][$context['sandbox']['page']] = $list;
 
+      $context['sandbox']['page']++;
       $context['sandbox']['processed'] += $count;
       $context['finished'] = 0;
       // There may be cases where we don't know the total number of
       // results (e.g. mini pager with a search_api view)
-      if ($context['sandbox']['total']) {
-        $context['finished'] = $context['sandbox']['processed'] / $context['sandbox']['total'];
+      if ($data['total_results']) {
+        $context['finished'] = $context['sandbox']['processed'] / $data['total_results'];
         $context['message'] = static::t('Prepared @count of @total entities for processing.', [
           '@count' => $context['sandbox']['processed'],
-          '@total' => $context['sandbox']['total'],
+          '@total' => $data['total_results'],
         ]);
       }
       else {

@@ -4,8 +4,6 @@ namespace Drupal\views_bulk_operations\Plugin\views\field;
 
 use Drupal\Core\Cache\CacheableDependencyInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
-use Drupal\Core\Entity\EntityInterface;
-use Drupal\Core\Entity\RevisionableInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Routing\RedirectDestinationTrait;
 use Drupal\views\Plugin\views\display\DisplayPluginBase;
@@ -18,6 +16,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\views_bulk_operations\Service\ViewsbulkOperationsViewDataInterface;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessorInterface;
+use Drupal\views_bulk_operations\Form\ViewsBulkOperationsFormTrait;
 use Drupal\user\PrivateTempStoreFactory;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
@@ -33,6 +32,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
   use RedirectDestinationTrait;
   use UncacheableFieldHandlerTrait;
+  use ViewsBulkOperationsFormTrait;
 
   /**
    * Object that gets the current view data.
@@ -177,9 +177,21 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
     }
 
-    // Initialize tempstore object.
+    // Initialize tempstore object and get data if available.
     $tempstore_name = 'views_bulk_operations_' . $view->id() . '_' . $view->current_display;
     $this->userTempStore = $this->tempStoreFactory->get($tempstore_name);
+    $this->tempStoreData = $this->userTempStore->get($this->currentUser->id());
+    if (empty($this->tempStoreData)) {
+      $this->tempStoreData = [
+        'view_id' => $this->view->id(),
+        'display_id' => $this->view->current_display,
+        'list' => [],
+      ];
+    }
+    $this->tempStoreData['arguments'] = $this->view->args;
+    $this->tempStoreData['exposed_input'] = $this->view->getExposedInput();
+    $this->tempStoreData['batch'] = $this->options['batch'];
+    $this->tempStoreData['batch_size'] = $this->options['batch'] ? $this->options['batch_size'] : 0;
 
     // Force form_step setting to TRUE due to #2879310.
     $this->options['form_step'] = TRUE;
@@ -436,24 +448,26 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $action_options = $this->getBulkOptions();
     if (!empty($this->view->result) && !empty($action_options)) {
 
-      // Prepare entity labels data so the view will not
-      // need to be executed again on possible confirmation
-      // or configuration forms.
-      $this->tempStoreData['entity_labels'] = [];
+      // Get pager data if available.
+      if (!empty($this->view->pager) && method_exists($this->view->pager, 'hasMoreRecords')) {
+        $this->tempStoreData['current_page'] = $this->view->pager->getCurrentPage();
+        $more = $this->view->pager->hasMoreRecords();
+      }
+      else {
+        $this->tempStoreData['current_page'] = 0;
+        $more = FALSE;
+      }
 
       // Render checkboxes for all rows.
       $form[$this->options['id']]['#tree'] = TRUE;
       foreach ($this->view->result as $row_index => $row) {
         $entity = $this->getEntity($row);
-        $this->tempStoreData['entity_labels'][$row_index] = $entity->label();
 
         $form[$this->options['id']][$row_index] = [
           '#type' => 'checkbox',
-          // We are not able to determine a main "title" for each row, so we can
-          // only output a generic label.
-          '#title' => $this->t('Update this item'),
+          '#title' => $entity->label(),
           '#title_display' => 'invisible',
-          '#default_value' => !empty($form_state->getValue($this->options['id'])[$row_index]) ? 1 : NULL,
+          '#default_value' => isset($this->tempStoreData['list'][$this->tempStoreData['current_page']][$row_index]),
           '#return_value' => self::calculateEntityBulkFormKey($entity, $use_revision, $row_index),
         ];
       }
@@ -518,12 +532,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
 
       // Select all results checkbox.
-      $show_all_selector = FALSE;
-      if (!empty($this->view->pager) && method_exists($this->view->pager, 'hasMoreRecords')) {
-        $show_all_selector = ($this->view->pager->getCurrentPage() > 0 || $this->view->pager->hasMoreRecords());
-      }
       $this->tempStoreData['total_results'] = $this->viewData->getTotalResults();
-      if ($show_all_selector) {
+      if ($more || $current_page > 0) {
         $form['header'][$this->options['id']]['select_all'] = [
           '#type' => 'checkbox',
           '#title' => $this->t('Select all@count results in this view', [
@@ -540,6 +550,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       // Remove the default actions build array.
       unset($form['actions']);
     }
+
   }
 
   /**
@@ -604,35 +615,22 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       $action = $this->actions[$action_id];
 
-      $this->tempStoreData += [
-        'action_id' => $action_id,
-        'action_label' => empty($this->options['preconfiguration'][$action_id]['label_override']) ? (string) $action['label'] : $this->options['preconfiguration'][$action_id]['label_override'],
-        'relationship_id' => $this->options['relationship'],
-        'preconfiguration' => isset($this->options['preconfiguration'][$action_id]) ? $this->options['preconfiguration'][$action_id] : [],
-        'list' => [],
-        'view_id' => $this->view->id(),
-        'display_id' => $this->view->current_display,
-        'batch' => $this->options['batch'],
-        'arguments' => $this->view->args,
-        'exposed_input' => $this->view->getExposedInput(),
-      ];
+      $this->tempStoreData['action_id'] = $action_id;
+      $this->tempStoreData['action_label'] = empty($this->options['preconfiguration'][$action_id]['label_override']) ? (string) $action['label'] : $this->options['preconfiguration'][$action_id]['label_override'];
+      $this->tempStoreData['relationship_id'] = $this->options['relationship'];
+      $this->tempStoreData['preconfiguration'] = isset($this->options['preconfiguration'][$action_id]) ? $this->options['preconfiguration'][$action_id] : [];
 
       if (!$form_state->getValue('select_all')) {
-        $selected = array_filter($form_state->getValue($this->options['id']));
-        $selected_indexes = [];
-        foreach ($selected as $bulk_form_key) {
-          $item = json_decode(base64_decode($bulk_form_key));
-          $this->tempStoreData['list'][] = $item;
-          $selected_indexes[] = $item[0];
+        $this->tempStoreData['list'][$this->tempStoreData['current_page']] = [];
+        foreach ($form_state->getValue($this->options['id']) as $row_index => $value) {
+          if ($value) {
+            $item = json_decode(base64_decode($value));
+            $this->tempStoreData['list'][$this->tempStoreData['current_page']][$row_index] = array_merge(
+              [$form[$this->options['id']][$row_index]['#title']],
+              $item
+            );
+          }
         }
-
-        // Filter selected entity labels.
-        $this->tempStoreData['entity_labels'] = array_filter($this->tempStoreData['entity_labels'], function ($key) use ($selected_indexes) {
-          return in_array($key, $selected_indexes, TRUE);
-        }, ARRAY_FILTER_USE_KEY);
-      }
-      else {
-        $this->tempStoreData['entity_labels'] = [];
       }
 
       $configurable = $this->isConfigurable($action);
@@ -668,7 +666,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       // Redirect if needed.
       if (!empty($redirect_route)) {
-        $this->tempStoreData['batch_size'] = $this->options['batch_size'];
         $this->tempStoreData['redirect_url'] = Url::createFromRequest(\Drupal::request());
 
         $this->userTempStore->set($this->currentUser->id(), $this->tempStoreData);
@@ -734,46 +731,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    */
   protected function drupalSetMessage($message = NULL, $type = 'status', $repeat = FALSE) {
     drupal_set_message($message, $type, $repeat);
-  }
-
-  /**
-   * Calculates a bulk form key.
-   *
-   * This generates a key that is used as the checkbox return value when
-   * submitting a bulk form. This key allows the entity for the row to be loaded
-   * totally independently of the executed view row.
-   *
-   * @param \Drupal\Core\Entity\EntityInterface $entity
-   *   The entity to calculate a bulk form key for.
-   * @param bool $use_revision
-   *   Whether the revision id should be added to the bulk form key. This should
-   *   be set to TRUE only if the view is listing entity revisions.
-   * @param int $row_index
-   *   Index of the views row that contains the entity.
-   *
-   * @return string
-   *   The bulk form key representing the entity's id, language and revision (if
-   *   applicable) as one string.
-   *
-   * @see self::loadEntityFromBulkFormKey()
-   */
-  public static function calculateEntityBulkFormKey(EntityInterface $entity, $use_revision, $row_index) {
-    $key_parts = [
-      $row_index,
-      $entity->language()->getId(),
-      $entity->getEntityTypeId(),
-      $entity->id(),
-    ];
-
-    if ($entity instanceof RevisionableInterface && $use_revision) {
-      $key_parts[] = $entity->getRevisionId();
-    }
-
-    // An entity ID could be an arbitrary string (although they are typically
-    // numeric). JSON then Base64 encoding ensures the bulk_form_key is
-    // safe to use in HTML, and that the key parts can be retrieved.
-    $key = json_encode($key_parts);
-    return base64_encode($key);
   }
 
   /**

@@ -200,53 +200,22 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
       $offset = 0;
     }
 
-    // Get view results if required.
-    if (empty($list)) {
-      $this->view->setItemsPerPage($batch_size);
-      $this->view->setCurrentPage($current_batch);
-      $this->view->build();
-
-      // If the view doesn't start from the first result,
-      // move the offset.
-      if ($view_offset = $this->view->pager->getOffset()) {
-        $offset += $view_offset;
-      }
-      $this->view->query->setLimit($batch_size);
-      $this->view->query->setOffset($offset);
-
-      // Let modules modify the view just prior to executing it.
-      $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
-      $this->view->query->execute($this->view);
-
-      // Prepare result getter.
-      $this->viewDataService->init($this->view, $this->view->getDisplay(), $this->bulkFormData['relationship_id']);
-      foreach ($this->view->result as $row) {
-        $this->queue[] = $this->viewDataService->getEntity($row);
-      }
-    }
-    else {
-      if ($batch_size) {
-        $batch_list = array_slice($list, $offset, $batch_size);
-      }
-      else {
-        $batch_list = $list;
-      }
-      foreach ($batch_list as $item) {
+    $batch_list = $this->getResultBatch($list, $offset, $batch_size);
+    foreach ($batch_list as $page => $items) {
+      foreach ($items as $item) {
         $this->queue[] = $this->getEntity($item);
       }
-      if ($this->actionDefinition['pass_view']) {
-        $this->populateViewResult($batch_list, $context, $current_batch);
-      }
+    }
+    if ($this->actionDefinition['pass_view']) {
+      $this->populateViewResult($batch_list, $context, $current_batch);
     }
 
     // Extra processing when executed in a Batch API operation.
     if (!empty($context)) {
       if (!isset($context['sandbox']['total'])) {
-        if (empty($list)) {
-          $context['sandbox']['total'] = $this->viewDataService->getTotalResults();
-        }
-        else {
-          $context['sandbox']['total'] = count($list);
+        $context['sandbox']['total'] = 0;
+        foreach ($list as $items) {
+          $context['sandbox']['total'] += count($items);
         }
       }
       if ($this->actionDefinition['pass_context']) {
@@ -342,6 +311,9 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
       if (!$this->initialized) {
         $this->initialize($data, $view);
       }
+      if (empty($list)) {
+        $list[0] = $this->getPageList(0);
+      }
       if ($this->populateQueue($list)) {
         $batch_results = $this->process();
       }
@@ -393,30 +365,105 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
       $this->view->query->execute($this->view);
     }
     else {
-      $this->view->build();
-      $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
-      $this->view->query->execute($this->view);
+      foreach ($list as $page => $items) {
+        $this->view->setCurrentPage($page);
+        $this->view->build();
+        $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
+        $this->view->query->execute($this->view);
 
-      // Filter result using the $list array.
-      foreach ($this->view->result as $delta => $row) {
-        $entity = $this->viewDataService->getEntity($row);
-        $unset = TRUE;
-        foreach ($list as $item) {
-          if (
-            $item[1] === $entity->language()->getId() &&
-            $item[2] === $entity->getEntityTypeId() &&
-            $item[3] === $entity->id()
-          ) {
-            $unset = FALSE;
-            break;
+        // Filter result using the $list array.
+        foreach ($this->view->result as $delta => $row) {
+          $entity = $this->viewDataService->getEntity($row);
+          $unset = TRUE;
+          foreach ($items as $item) {
+            if (
+              $item[1] === $entity->language()->getId() &&
+              $item[2] === $entity->getEntityTypeId() &&
+              $item[3] === $entity->id()
+            ) {
+              $unset = FALSE;
+              break;
+            }
+          }
+          if ($unset) {
+            unset($this->view->result[$delta]);
           }
         }
-        if ($unset) {
-          unset($this->view->result[$delta]);
-        }
+        $this->view->result = array_values($this->view->result);
       }
-      $this->view->result = array_values($this->view->result);
     }
+  }
+
+  /**
+   * Get a batch of results to process.
+   *
+   * @param array $list
+   *   A full list of results, keyed by page.
+   * @param int $offset
+   *   The number of results to skip.
+   * @param int $batch_size
+   *   The number of results to return.
+   *
+   * @return array
+   *   Array of decoded entity data items, keyed by page.
+   */
+  protected function getResultBatch(array $list, $offset = 0, $batch_size = 0) {
+    if ($offset === 0 && $batch_size === 0) {
+      return $list;
+    }
+    $n_processed = 0;
+    $n_added = 0;
+    $output = [];
+    foreach ($list as $page => $items) {
+      foreach ($items as $key => $data) {
+        $n_processed++;
+        if (($n_processed - 1) < $offset) {
+          continue;
+        }
+        if ($batch_size && $n_added >= $batch_size) {
+          break 2;
+        }
+        $output[$page][] = (is_array($data)) ? $data : json_decode(base64_decode($key));
+        $n_added++;
+      }
+    }
+
+    return $output;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getPageList($page) {
+    $list = [];
+
+    $this->viewDataService->init($this->view, $this->view->getDisplay(), $this->bulkFormData['relationship_id']);
+
+    $this->view->setItemsPerPage($this->bulkFormData['batch_size']);
+    $this->view->setCurrentPage($page);
+    $this->view->build();
+
+    $offset = $this->bulkFormData['batch_size'] * $page;
+    // If the view doesn't start from the first result,
+    // move the offset.
+    if ($pager_offset = $this->view->pager->getOffset()) {
+      $offset += $pager_offset;
+    }
+    $this->view->query->setLimit($this->bulkFormData['batch_size']);
+    $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
+    $this->view->query->execute($this->view);
+
+    foreach ($this->view->result as $row) {
+      $entity = $this->viewDataService->getEntity($row);
+      $list[] = [
+        $entity->label(),
+        $entity->language()->getId(),
+        $entity->getEntityTypeId(),
+        $entity->id(),
+      ];
+    }
+
+    return $list;
   }
 
   /**
