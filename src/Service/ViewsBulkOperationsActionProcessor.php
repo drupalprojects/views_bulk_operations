@@ -393,6 +393,9 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
       $this->view->query->execute($this->view);
     }
     else {
+      if ($this->bulkFormData['current_page']) {
+        $this->view->setCurrentPage($this->bulkFormData['current_page']);
+      }
       $this->view->build();
       $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
       $this->view->query->execute($this->view);
@@ -415,7 +418,6 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
           unset($this->view->result[$delta]);
         }
       }
-      $this->view->result = array_values($this->view->result);
     }
   }
 

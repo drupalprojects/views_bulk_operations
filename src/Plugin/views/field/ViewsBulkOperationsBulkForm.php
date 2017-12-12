@@ -617,6 +617,14 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         'exposed_input' => $this->view->getExposedInput(),
       ];
 
+      // Get the current page for the "pass_view" functionality.
+      if (!empty($action['pass_view'])) {
+        $this->tempStoreData['current_page'] = 0;
+        if (!empty($this->view->pager) && method_exists($this->view->pager, 'getCurrentPage')) {
+          $this->tempStoreData['current_page'] = $this->view->pager->getCurrentPage();
+        }
+      }
+
       if (!$form_state->getValue('select_all')) {
         $selected = array_filter($form_state->getValue($this->options['id']));
         $selected_indexes = [];
