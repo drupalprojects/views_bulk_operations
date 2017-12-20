@@ -267,9 +267,9 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
     // size greater than items per page and lower than items per page,
     // using Batch API process and without it.
     $cases = [
-      ['batch' => FALSE, 'selection' => TRUE],
+      ['batch' => FALSE, 'selection' => TRUE, 'page' => 1],
       ['batch' => FALSE, 'selection' => FALSE],
-      ['batch' => TRUE, 'batch_size' => 3, 'selection' => TRUE],
+      ['batch' => TRUE, 'batch_size' => 3, 'selection' => TRUE, 'page' => 1],
       ['batch' => TRUE, 'batch_size' => 7, 'selection' => TRUE],
       ['batch' => TRUE, 'batch_size' => 3, 'selection' => FALSE],
       ['batch' => TRUE, 'batch_size' => 7, 'selection' => FALSE],
@@ -306,7 +306,12 @@ class ViewsBulkOperationsBulkFormTest extends BrowserTestBase {
       $testViewConfig->setData($configData);
       $testViewConfig->save();
 
-      $this->drupalGet('views-bulk-operations-test-advanced');
+      $options = [];
+      if (!empty($case['page'])) {
+        $options['query'] = ['page' => $case['page']];
+      }
+
+      $this->drupalGet('views-bulk-operations-test-advanced', $options);
       $this->drupalPostForm(NULL, $edit, t('Apply to selected items'));
 
       // On batch-enabled processes check if provided context data is correct.

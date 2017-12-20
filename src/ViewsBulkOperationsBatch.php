@@ -52,7 +52,9 @@ class ViewsBulkOperationsBatch {
     $list = $actionProcessor->getPageList($context['sandbox']['page']);
     $count = count($list);
     if ($count) {
-      $context['results']['list'][$context['sandbox']['page']] = $list;
+      foreach ($list as $item) {
+        $context['results']['list'][] = $item;
+      }
 
       $context['sandbox']['page']++;
       $context['sandbox']['processed'] += $count;

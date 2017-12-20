@@ -32,6 +32,7 @@ class ViewsBulkOperationsPassTestAction extends ViewsBulkOperationsActionBase {
 
     // Check if the passed view result rows contain the correct nodes.
     if (empty($this->context['sandbox']['result_pass_error'])) {
+      $this->view->result = array_values($this->view->result);
       foreach ($nodes as $index => $node) {
         $result_node = $this->view->result[$index]->_entity;
         if (

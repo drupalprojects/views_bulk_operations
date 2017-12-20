@@ -18,6 +18,17 @@ interface ViewsBulkOperationsActionProcessorInterface {
   public function initialize(array $view_data, $view = NULL);
 
   /**
+   * Get full list of items from a specific view page.
+   *
+   * @param int $page
+   *   Results page number.
+   *
+   * @return array
+   *   Array of result data arrays.
+   */
+  public function getPageList($page);
+
+  /**
    * Populate entity queue for processing.
    *
    * @param array $list
@@ -49,25 +60,6 @@ interface ViewsBulkOperationsActionProcessorInterface {
    *   The current view object or NULL.
    */
   public function executeProcessing(array &$data, $view = NULL);
-
-  /**
-   * Get entity for processing.
-   *
-   * @param array $entity_data
-   *   Entity data array.
-   */
-  public function getEntity(array $entity_data);
-
-  /**
-   * Get full list of items from a specific view page.
-   *
-   * @param int $page
-   *   Results page number.
-   *
-   * @return array
-   *   Array of result data arrays.
-   */
-  public function getPageList($page);
 
   /**
    * Get the current entity queue.

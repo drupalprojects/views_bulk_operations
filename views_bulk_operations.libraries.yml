@@ -1,10 +1,10 @@
-selectAll:
+frontUi:
   version: 1.0
   js:
-    js/selectAll.js: {}
+    js/frontUi.js: {}
   css:
     component:
-      css/selectAll.css: {}
+      css/frontUi.css: {}
   dependencies:
     - core/drupal
     - core/jquery

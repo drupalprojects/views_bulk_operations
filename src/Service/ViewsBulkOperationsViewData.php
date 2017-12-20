@@ -138,6 +138,17 @@ class ViewsBulkOperationsViewData implements ViewsBulkOperationsViewDataInterfac
   /**
    * {@inheritdoc}
    */
+  public function getViewBaseField() {
+    $views_data = $this->getData();
+    if (isset($views_data['table']['base']['field'])) {
+      return $views_data['table']['base']['field'];
+    }
+    throw new \Exception('Unable to get base field for the view.');
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getEntity(ResultRow $row) {
     if (!empty($this->entityGetter['file'])) {
       require_once $this->entityGetter['file'];
@@ -190,7 +201,7 @@ class ViewsBulkOperationsViewData implements ViewsBulkOperationsViewDataInterfac
     }
 
     // Include pager offset.
-    if ($total_results && $offset = $this->view->pager->getOffset()) {
+    if ($total_results && isset($this->view->pager) && $offset = $this->view->pager->getOffset()) {
       $total_results -= $offset;
     }
 

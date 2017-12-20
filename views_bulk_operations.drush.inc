@@ -92,6 +92,9 @@ function drush_views_bulk_operations_execute($view_id, $action_id) {
     $view->setExposedInput($vbo_data['exposed_input']);
   }
 
+  // We need total rows count for proper progress message display.
+  $view->get_total_rows = TRUE;
+
   // Get action definition and check if action ID is correct.
   try {
     $action_definition = \Drupal::service('plugin.manager.views_bulk_operations_action')->getDefinition($action_id);

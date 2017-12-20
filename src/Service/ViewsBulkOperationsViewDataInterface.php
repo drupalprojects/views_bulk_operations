@@ -40,6 +40,14 @@ interface ViewsBulkOperationsViewDataInterface {
   public function getViewProvider();
 
   /**
+   * Get base field for the current view.
+   *
+   * @return sting
+   *   The base field name.
+   */
+  public function getViewBaseField();
+
+  /**
    * Get entity from views row.
    *
    * @param \Drupal\views\ResultRow $row

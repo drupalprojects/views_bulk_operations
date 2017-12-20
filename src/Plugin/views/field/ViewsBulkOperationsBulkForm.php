@@ -84,13 +84,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   protected $bulkOptions;
 
   /**
-   * The current user temporary storage.
-   *
-   * @var \Drupal\user\PrivateTempStore
-   */
-  protected $userTempStore;
-
-  /**
    * Tempstore data.
    *
    * This gets passed to next requests if needed
@@ -99,6 +92,16 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    * @var array
    */
   protected $tempStoreData = [];
+
+  /**
+   * Pager data.
+   *
+   * @var array
+   */
+  protected $pagerData = [
+    'current' => 0,
+    'more' => FALSE,
+  ];
 
   /**
    * Constructs a new BulkForm object.
@@ -161,6 +164,14 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   public function init(ViewExecutable $view, DisplayPluginBase $display, array &$options = NULL) {
     parent::init($view, $display, $options);
 
+    // Don't initialize if view has been built from VBO action processor.
+    if (!empty($this->view->views_bulk_operations_processor_built)) {
+      return;
+    }
+
+    // Set this property to always have the total rows information.
+    $this->view->get_total_rows = TRUE;
+
     // Initialize VBO View Data object.
     $this->viewData->init($view, $display, $this->options['relationship']);
 
@@ -177,24 +188,79 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
     }
 
+    // Force form_step setting to TRUE due to #2879310.
+    $this->options['form_step'] = TRUE;
+  }
+
+  /**
+   * Update tempstore data.
+   *
+   * This function must be called a bit later, when the view
+   * query has been built. Also, no point doing this on the view
+   * admin page.
+   */
+  protected function updateTempstoreData() {
     // Initialize tempstore object and get data if available.
-    $tempstore_name = 'views_bulk_operations_' . $view->id() . '_' . $view->current_display;
-    $this->userTempStore = $this->tempStoreFactory->get($tempstore_name);
-    $this->tempStoreData = $this->userTempStore->get($this->currentUser->id());
-    if (empty($this->tempStoreData)) {
-      $this->tempStoreData = [
+    $this->tempStoreData = $this->getTempstoreData($this->view->id(), $this->view->current_display);
+
+    // Parameters subject to change (either by an admin or user action).
+    $variable = [
+      'batch' => $this->options['batch'],
+      'batch_size' => $this->options['batch'] ? $this->options['batch_size'] : 0,
+      'total_results' => $this->viewData->getTotalResults(),
+      'arguments' => $this->view->args,
+    ];
+
+    // Create tempstore data object if it doesn't exist.
+    if (!is_array($this->tempStoreData)) {
+      $this->tempStoreData = [];
+
+      // Add constant parameters.
+      $this->tempStoreData += [
         'view_id' => $this->view->id(),
         'display_id' => $this->view->current_display,
         'list' => [],
       ];
-    }
-    $this->tempStoreData['arguments'] = $this->view->args;
-    $this->tempStoreData['exposed_input'] = $this->view->getExposedInput();
-    $this->tempStoreData['batch'] = $this->options['batch'];
-    $this->tempStoreData['batch_size'] = $this->options['batch'] ? $this->options['batch_size'] : 0;
 
-    // Force form_step setting to TRUE due to #2879310.
-    $this->options['form_step'] = TRUE;
+      // Add variable parameters.
+      $this->tempStoreData += $variable;
+
+      $this->setTempstoreData($this->tempStoreData);
+    }
+
+    // Update some of the tempstore data parameters if required.
+    else {
+      // Delete list if view arguments changed.
+      // NOTE: this should be subject to a discussion.
+      if (!empty(array_diff($variable['arguments'], $this->tempStoreData['arguments']))) {
+        $this->tempStoreData['arguments'] = $variable['arguments'];
+        $this->tempStoreData['list'] = [];
+      }
+      unset($variable['arguments']);
+
+      $update = FALSE;
+      foreach ($variable as $param => $value) {
+        if (!isset($this->tempStoreData[$param]) || $this->tempStoreData[$param] != $value) {
+          $update = TRUE;
+          $this->tempStoreData[$param] = $value;
+        }
+      }
+
+      if ($update) {
+        $this->setTempstoreData($this->tempStoreData);
+      }
+    }
+
+  }
+
+  /**
+   * Gets the current user.
+   *
+   * @return \Drupal\Core\Session\AccountInterface
+   *   The current user.
+   */
+  protected function currentUser() {
+    return $this->currentUser;
   }
 
   /**
@@ -435,12 +501,10 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     // @todo Evaluate this again in https://www.drupal.org/node/2503009.
     $form['#cache']['max-age'] = 0;
 
-    $use_revision = array_key_exists('revision', $this->view->getQuery()->getEntityTableInfo());
-
-    // Add select all and tableselect libraries for table display style.
+    // Add VBO front UI and tableselect libraries for table display style.
     if ($this->view->style_plugin instanceof Table) {
       $form['#attached']['library'][] = 'core/drupal.tableselect';
-      $form['#attached']['library'][] = 'views_bulk_operations/selectAll';
+      $form['#attached']['library'][] = 'views_bulk_operations/frontUi';
     }
 
     // Only add the bulk form options and buttons if
@@ -448,27 +512,39 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $action_options = $this->getBulkOptions();
     if (!empty($this->view->result) && !empty($action_options)) {
 
+      // Update tempstore data.
+      $this->updateTempstoreData();
+
+      $use_revision = array_key_exists('revision', $this->view->getQuery()->getEntityTableInfo());
+      $form[$this->options['id']]['#tree'] = TRUE;
+
       // Get pager data if available.
       if (!empty($this->view->pager) && method_exists($this->view->pager, 'hasMoreRecords')) {
-        $this->tempStoreData['current_page'] = $this->view->pager->getCurrentPage();
-        $more = $this->view->pager->hasMoreRecords();
-      }
-      else {
-        $this->tempStoreData['current_page'] = 0;
-        $more = FALSE;
+        $this->pagerData['current'] = $this->view->pager->getCurrentPage();
+        $this->pagerData['more'] = $this->view->pager->hasMoreRecords();
       }
 
       // Render checkboxes for all rows.
-      $form[$this->options['id']]['#tree'] = TRUE;
+      $page_selected = 0;
+      $base_field = $this->view->storage->get('base_field');
       foreach ($this->view->result as $row_index => $row) {
         $entity = $this->getEntity($row);
+        $bulk_form_key = self::calculateEntityBulkFormKey(
+          $entity,
+          $use_revision,
+          $row->{$base_field}
+        );
 
+        $checked = isset($this->tempStoreData['list'][$bulk_form_key]);
+        if ($checked) {
+          $page_selected++;
+        }
         $form[$this->options['id']][$row_index] = [
           '#type' => 'checkbox',
           '#title' => $entity->label(),
           '#title_display' => 'invisible',
-          '#default_value' => isset($this->tempStoreData['list'][$this->tempStoreData['current_page']][$row_index]),
-          '#return_value' => self::calculateEntityBulkFormKey($entity, $use_revision, $row_index),
+          '#default_value' => $checked,
+          '#return_value' => $bulk_form_key,
         ];
       }
 
@@ -531,9 +607,32 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         }
       }
 
-      // Select all results checkbox.
-      $this->tempStoreData['total_results'] = $this->viewData->getTotalResults();
-      if ($more || $current_page > 0) {
+      // Select all results checkbox and multipage selection.
+      if ($this->pagerData['more'] || $this->pagerData['current'] > 0) {
+
+        // Add view_id and display_id to be available for
+        // js multipage selector functionality.
+        $form['header'][$this->options['id']]['multipage'] = [
+          '#type' => 'details',
+          '#open' => (count($this->tempStoreData['list']) > $page_selected),
+          '#title' => $this->t('Multipage selection'),
+          '#description' => $this->t('Selected %count items.', [
+            '%count' => count($this->tempStoreData['list']),
+          ]),
+          '#attributes' => [
+            'data-view-id' => $this->tempStoreData['view_id'],
+            'data-display-id' => $this->tempStoreData['display_id'],
+            'class' => ['vbo-multipage-selector'],
+            'name' => 'somename',
+          ],
+        ];
+        $form['header'][$this->options['id']]['multipage']['clear'] = [
+          '#type' => 'submit',
+          '#value' => $this->t('Clear selection'),
+          '#submit' => [[$this, 'clearSelection']],
+          '#limit_validation_errors' => [],
+        ];
+
         $form['header'][$this->options['id']]['select_all'] = [
           '#type' => 'checkbox',
           '#title' => $this->t('Select all@count results in this view', [
@@ -604,9 +703,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
    *   An associative array containing the structure of the form.
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The current state of the form.
-   *
-   * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
-   *   Thrown when the user tried to access an action without access to it.
    */
   public function viewsFormSubmit(array &$form, FormStateInterface $form_state) {
     if ($form_state->get('step') == 'views_form_views_form') {
@@ -615,22 +711,31 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       $action = $this->actions[$action_id];
 
+      // Update tempstore data to make sure we have also
+      // results selected in other requests.
+      $this->tempStoreData = $this->getTempstoreData();
+
       $this->tempStoreData['action_id'] = $action_id;
       $this->tempStoreData['action_label'] = empty($this->options['preconfiguration'][$action_id]['label_override']) ? (string) $action['label'] : $this->options['preconfiguration'][$action_id]['label_override'];
       $this->tempStoreData['relationship_id'] = $this->options['relationship'];
       $this->tempStoreData['preconfiguration'] = isset($this->options['preconfiguration'][$action_id]) ? $this->options['preconfiguration'][$action_id] : [];
+      $this->tempStoreData['current_page'] = $this->pagerData['current'];
 
       if (!$form_state->getValue('select_all')) {
-        $this->tempStoreData['list'][$this->tempStoreData['current_page']] = [];
-        foreach ($form_state->getValue($this->options['id']) as $row_index => $value) {
-          if ($value) {
-            $item = json_decode(base64_decode($value));
-            $this->tempStoreData['list'][$this->tempStoreData['current_page']][$row_index] = array_merge(
-              [$form[$this->options['id']][$row_index]['#title']],
-              $item
-            );
+        // Update list data with the form selection.
+        foreach ($form_state->getValue($this->options['id']) as $row_index => $bulkFormKey) {
+          if ($bulkFormKey) {
+            $item = array_merge([$form[$this->options['id']][$row_index]['#title']], json_decode(base64_decode($bulkFormKey)));
+            $this->tempStoreData['list'][$bulkFormKey] = $item;
           }
         }
+      }
+      else {
+        // Unset the list completely.
+        $this->tempStoreData['list'] = [];
+
+        // Set exposed input.
+        $this->tempStoreData['exposed_input'] = $this->view->getExposedInput();
       }
 
       $configurable = $this->isConfigurable($action);
@@ -668,7 +773,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       if (!empty($redirect_route)) {
         $this->tempStoreData['redirect_url'] = Url::createFromRequest(\Drupal::request());
 
-        $this->userTempStore->set($this->currentUser->id(), $this->tempStoreData);
+        $this->setTempstoreData($this->tempStoreData);
 
         $form_state->setRedirect($redirect_route, [
           'view_id' => $this->view->id(),
@@ -677,9 +782,22 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
       // Or process rows here and now.
       else {
+        $this->deleteTempstoreData();
         $this->actionProcessor->executeProcessing($this->tempStoreData, $this->view);
       }
     }
+  }
+
+  /**
+   * Clear the form selection along with entire tempstore.
+   *
+   * @param array $form
+   *   An associative array containing the structure of the form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   */
+  public function clearSelection(array &$form, FormStateInterface $form_state) {
+    $this->deleteTempstoreData();
   }
 
   /**

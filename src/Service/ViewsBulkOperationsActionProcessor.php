@@ -2,7 +2,6 @@
 
 namespace Drupal\views_bulk_operations\Service;
 
-use Drupal\Core\TypedData\TranslatableInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\views\Views;
 use Drupal\Core\Session\AccountProxyInterface;
@@ -171,20 +170,58 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
     else {
       $this->view = Views::getView($this->bulkFormData['view_id']);
       $this->view->setDisplay($this->bulkFormData['display_id']);
-      if (!empty($this->bulkFormData['arguments'])) {
-        $this->view->setArguments($this->bulkFormData['arguments']);
-      }
-      if (!empty($this->bulkFormData['exposed_input'])) {
-        $this->view->setExposedInput($this->bulkFormData['exposed_input']);
-      }
+    }
+    $this->view->get_total_rows = TRUE;
+    $this->view->views_bulk_operations_processor_built = TRUE;
+    if (!empty($this->bulkFormData['arguments'])) {
+      $this->view->setArguments($this->bulkFormData['arguments']);
     }
   }
 
   /**
    * {@inheritdoc}
    */
-  public function populateQueue(array $list, array &$context = []) {
+  public function getPageList($page) {
+    $list = [];
 
+    $this->viewDataService->init($this->view, $this->view->getDisplay(), $this->bulkFormData['relationship_id']);
+
+    $this->view->setItemsPerPage($this->bulkFormData['batch_size']);
+    $this->view->setCurrentPage($page);
+    $this->view->build();
+
+    $offset = $this->bulkFormData['batch_size'] * $page;
+    // If the view doesn't start from the first result,
+    // move the offset.
+    if ($pager_offset = $this->view->pager->getOffset()) {
+      $offset += $pager_offset;
+    }
+    $this->view->query->setLimit($this->bulkFormData['batch_size']);
+    $this->view->query->setOffset($offset);
+    $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
+    $this->view->query->execute($this->view);
+
+    $base_field = $this->view->storage->get('base_field');
+
+    foreach ($this->view->result as $row) {
+      $entity = $this->viewDataService->getEntity($row);
+      // We don't need entity label here.
+      $list[] = [
+        '',
+        $row->{$base_field},
+        $entity->language()->getId(),
+        $entity->getEntityTypeId(),
+        $entity->id(),
+      ];
+    }
+
+    return $list;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function populateQueue(array $list, array &$context = []) {
     // Determine batch size and offset.
     if (!empty($context)) {
       $batch_size = $this->bulkFormData['batch_size'];
@@ -200,22 +237,62 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
       $offset = 0;
     }
 
-    $batch_list = $this->getResultBatch($list, $offset, $batch_size);
-    foreach ($batch_list as $page => $items) {
-      foreach ($items as $item) {
-        $this->queue[] = $this->getEntity($item);
-      }
+    if ($batch_size) {
+      $batch_list = array_slice($list, $offset, $batch_size);
     }
-    if ($this->actionDefinition['pass_view']) {
-      $this->populateViewResult($batch_list, $context, $current_batch);
+    else {
+      $batch_list = $list;
+    }
+
+    $base_field_values = [];
+    foreach ($batch_list as $item) {
+      $base_field_values[] = $item[1];
+    }
+    if (empty($base_field_values)) {
+      return 0;
+    }
+
+    $this->view->setItemsPerPage(0);
+    $this->view->setCurrentPage(0);
+    $this->view->setOffset(0);
+    $this->view->build();
+
+    $base_field = $this->view->storage->get('base_field');
+    $this->view->query->addWhere(0, $base_field, $base_field_values, 'IN');
+    $this->view->query->build($this->view);
+
+    // Execute the view.
+    $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
+    $this->view->query->execute($this->view);
+
+    // Get entities.
+    $this->viewDataService->init($this->view, $this->view->getDisplay(), $this->bulkFormData['relationship_id']);
+    foreach ($this->view->result as $row_index => $row) {
+      // This may return rows for all possible languages.
+      // Check if the current language is on the list.
+      $found = FALSE;
+      $entity = $this->viewDataService->getEntity($row);
+      foreach ($batch_list as $delta => $item) {
+        if ($row->{$base_field} === $item[1] && $entity->language()->getId() === $item[2]) {
+          $this->queue[] = $entity;
+          $found = TRUE;
+          unset($batch_list[$delta]);
+          break;
+        }
+      }
+      if (!$found) {
+        unset($this->view->result[$row_index]);
+      }
     }
 
     // Extra processing when executed in a Batch API operation.
     if (!empty($context)) {
       if (!isset($context['sandbox']['total'])) {
-        $context['sandbox']['total'] = 0;
-        foreach ($list as $items) {
-          $context['sandbox']['total'] += count($items);
+        if (empty($list)) {
+          $context['sandbox']['total'] = $this->viewDataService->getTotalResults();
+        }
+        else {
+          $context['sandbox']['total'] = count($list);
         }
       }
       if ($this->actionDefinition['pass_context']) {
@@ -312,7 +389,7 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
         $this->initialize($data, $view);
       }
       if (empty($list)) {
-        $list[0] = $this->getPageList(0);
+        $list = $this->getPageList(0);
       }
       if ($this->populateQueue($list)) {
         $batch_results = $this->process();
@@ -324,146 +401,6 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
       }
       ViewsBulkOperationsBatch::finished(TRUE, $results, []);
     }
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getEntity(array $entity_data) {
-    if (!isset($entity_data[4])) {
-      $entity_data[4] = FALSE;
-    }
-    list(, $langcode, $entity_type_id, $id, $revision_id) = $entity_data;
-
-    // Load the entity or a specific revision depending on the given key.
-    $entityStorage = $this->entityTypeManager->getStorage($entity_type_id);
-    $entity = $revision_id ? $entityStorage->loadRevision($revision_id) : $entityStorage->load($id);
-
-    if ($entity instanceof TranslatableInterface) {
-      $entity = $entity->getTranslation($langcode);
-    }
-
-    return $entity;
-  }
-
-  /**
-   * Populate view result with selected rows.
-   *
-   * @param array $list
-   *   User selection data.
-   * @param array $context
-   *   Batch API context.
-   * @param int $current_batch
-   *   The current batch index.
-   */
-  protected function populateViewResult(array $list, array $context, $current_batch) {
-    if (!empty($this->bulkFormData['prepopulated'])) {
-      $this->view->setItemsPerPage($this->bulkFormData['batch_size']);
-      $this->view->setCurrentPage($current_batch);
-      $this->view->build();
-      $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
-      $this->view->query->execute($this->view);
-    }
-    else {
-      foreach ($list as $page => $items) {
-        $this->view->setCurrentPage($page);
-        $this->view->build();
-        $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
-        $this->view->query->execute($this->view);
-
-        // Filter result using the $list array.
-        foreach ($this->view->result as $delta => $row) {
-          $entity = $this->viewDataService->getEntity($row);
-          $unset = TRUE;
-          foreach ($items as $item) {
-            if (
-              $item[1] === $entity->language()->getId() &&
-              $item[2] === $entity->getEntityTypeId() &&
-              $item[3] === $entity->id()
-            ) {
-              $unset = FALSE;
-              break;
-            }
-          }
-          if ($unset) {
-            unset($this->view->result[$delta]);
-          }
-        }
-        $this->view->result = array_values($this->view->result);
-      }
-    }
-  }
-
-  /**
-   * Get a batch of results to process.
-   *
-   * @param array $list
-   *   A full list of results, keyed by page.
-   * @param int $offset
-   *   The number of results to skip.
-   * @param int $batch_size
-   *   The number of results to return.
-   *
-   * @return array
-   *   Array of decoded entity data items, keyed by page.
-   */
-  protected function getResultBatch(array $list, $offset = 0, $batch_size = 0) {
-    if ($offset === 0 && $batch_size === 0) {
-      return $list;
-    }
-    $n_processed = 0;
-    $n_added = 0;
-    $output = [];
-    foreach ($list as $page => $items) {
-      foreach ($items as $key => $data) {
-        $n_processed++;
-        if (($n_processed - 1) < $offset) {
-          continue;
-        }
-        if ($batch_size && $n_added >= $batch_size) {
-          break 2;
-        }
-        $output[$page][] = (is_array($data)) ? $data : json_decode(base64_decode($key));
-        $n_added++;
-      }
-    }
-
-    return $output;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getPageList($page) {
-    $list = [];
-
-    $this->viewDataService->init($this->view, $this->view->getDisplay(), $this->bulkFormData['relationship_id']);
-
-    $this->view->setItemsPerPage($this->bulkFormData['batch_size']);
-    $this->view->setCurrentPage($page);
-    $this->view->build();
-
-    $offset = $this->bulkFormData['batch_size'] * $page;
-    // If the view doesn't start from the first result,
-    // move the offset.
-    if ($pager_offset = $this->view->pager->getOffset()) {
-      $offset += $pager_offset;
-    }
-    $this->view->query->setLimit($this->bulkFormData['batch_size']);
-    $this->moduleHandler->invokeAll('views_pre_execute', [$this->view]);
-    $this->view->query->execute($this->view);
-
-    foreach ($this->view->result as $row) {
-      $entity = $this->viewDataService->getEntity($row);
-      $list[] = [
-        $entity->label(),
-        $entity->language()->getId(),
-        $entity->getEntityTypeId(),
-        $entity->id(),
-      ];
-    }
-
-    return $list;
   }
 
   /**

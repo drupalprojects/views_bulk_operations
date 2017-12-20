@@ -4,14 +4,19 @@ namespace Drupal\views_bulk_operations\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Drupal\views_bulk_operations\Form\ViewsBulkOperationsFormTrait;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessorInterface;
 use Drupal\user\PrivateTempStoreFactory;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Drupal\Core\Ajax\AjaxResponse;
 
 /**
  * Defines VBO controller class.
  */
 class ViewsBulkOperationsController extends ControllerBase implements ContainerInjectionInterface {
+
+  use ViewsBulkOperationsFormTrait;
 
   /**
    * User private temporary storage factory.
@@ -62,14 +67,52 @@ class ViewsBulkOperationsController extends ControllerBase implements ContainerI
    *   The display ID of the current view.
    */
   public function execute($view_id, $display_id) {
-    $tempstore_name = 'views_bulk_operations_' . $view_id . '_' . $display_id;
-
-    $tempstore = $this->tempStoreFactory->get($tempstore_name);
-    $view_data = $tempstore->get($this->currentUser()->id());
-    $tempstore->delete($this->currentUser()->id());
+    $view_data = $this->getTempstoreData($view_id, $display_id);
+    $this->deleteTempstoreData();
 
     $this->actionProcessor->executeProcessing($view_data);
     return batch_process($view_data['redirect_url']);
+  }
+
+  /**
+   * AJAX callback to update selection (multipage).
+   *
+   * @param string $view_id
+   *   The current view ID.
+   * @param string $display_id
+   *   The display ID of the current view.
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The request object.
+   */
+  public function updateSelection($view_id, $display_id, Request $request) {
+    $list = $request->request->get('list');
+
+    $op = $request->request->get('op', 'add');
+    $change = 0;
+
+    $view_data = $this->getTempstoreData($view_id, $display_id);
+    if ($op === 'add') {
+      foreach ($list as $bulkFormKey => $label) {
+        if (!isset($view_data['list'][$bulkFormKey])) {
+          $item = array_merge([$label], json_decode(base64_decode($bulkFormKey)));
+          $view_data['list'][$bulkFormKey] = $item;
+          $change++;
+        }
+      }
+    }
+    elseif ($op === 'remove') {
+      foreach ($list as $bulkFormKey => $label) {
+        if (isset($view_data['list'][$bulkFormKey])) {
+          unset($view_data['list'][$bulkFormKey]);
+          $change--;
+        }
+      }
+    }
+    $this->setTempstoreData($view_data);
+
+    $response = new AjaxResponse();
+    $response->setData(['change' => $change]);
+    return $response;
   }
 
 }
