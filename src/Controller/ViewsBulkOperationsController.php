@@ -5,6 +5,7 @@ namespace Drupal\views_bulk_operations\Controller;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\views_bulk_operations\Form\ViewsBulkOperationsFormTrait;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionProcessorInterface;
 use Drupal\user\PrivateTempStoreFactory;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -68,6 +69,9 @@ class ViewsBulkOperationsController extends ControllerBase implements ContainerI
    */
   public function execute($view_id, $display_id) {
     $view_data = $this->getTempstoreData($view_id, $display_id);
+    if (empty($view_data)) {
+      throw new NotFoundHttpException();
+    }
     $this->deleteTempstoreData();
 
     $this->actionProcessor->executeProcessing($view_data);
@@ -85,12 +89,16 @@ class ViewsBulkOperationsController extends ControllerBase implements ContainerI
    *   The request object.
    */
   public function updateSelection($view_id, $display_id, Request $request) {
+    $view_data = $this->getTempstoreData($view_id, $display_id);
+    if (empty($view_data)) {
+      throw new NotFoundHttpException();
+    }
+
     $list = $request->request->get('list');
 
     $op = $request->request->get('op', 'add');
     $change = 0;
 
-    $view_data = $this->getTempstoreData($view_id, $display_id);
     if ($op === 'add') {
       foreach ($list as $bulkFormKey => $label) {
         if (!isset($view_data['list'][$bulkFormKey])) {
