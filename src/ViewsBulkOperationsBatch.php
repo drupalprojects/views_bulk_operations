@@ -51,6 +51,7 @@ class ViewsBulkOperationsBatch {
     // Populate queue.
     $list = $actionProcessor->getPageList($context['sandbox']['page']);
     $count = count($list);
+
     if ($count) {
       foreach ($list as $item) {
         $context['results']['list'][] = $item;
@@ -58,9 +59,10 @@ class ViewsBulkOperationsBatch {
 
       $context['sandbox']['page']++;
       $context['sandbox']['processed'] += $count;
-      $context['finished'] = 0;
+
       // There may be cases where we don't know the total number of
       // results (e.g. mini pager with a search_api view)
+      $context['finished'] = 0;
       if ($data['total_results']) {
         $context['finished'] = $context['sandbox']['processed'] / $data['total_results'];
         $context['message'] = static::t('Prepared @count of @total entities for processing.', [

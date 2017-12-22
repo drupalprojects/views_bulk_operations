@@ -94,6 +94,20 @@ function drush_views_bulk_operations_execute($view_id, $action_id) {
 
   // We need total rows count for proper progress message display.
   $view->get_total_rows = TRUE;
+  $view->execute();
+
+  // Get relationship ID if VBO field exists.
+  $vbo_data['relationship_id'] = 'none';
+  foreach ($view->field as $field) {
+    if ($field->options['id'] === 'views_bulk_operations_bulk_form') {
+      $vbo_data['relationship_id'] = $field->options['relationship'];
+    }
+  }
+
+  // Get total rows count.
+  $viewDataService = \Drupal::service('views_bulk_operations.data');
+  $viewDataService->init($view, $view->getDisplay(), $vbo_data['relationship_id']);
+  $vbo_data['total_results'] = $viewDataService->getTotalResults();
 
   // Get action definition and check if action ID is correct.
   try {
@@ -103,27 +117,29 @@ function drush_views_bulk_operations_execute($view_id, $action_id) {
     drush_set_error($e->getMessage());
     return;
   }
-  $vbo_data['action_label'] = $action_definition['label'];
+  $vbo_data['action_label'] = (string) $action_definition['label'];
 
   // Populate entity list.
   $context = [];
   do {
+    $context['finished'] = 1;
+    $context['message'] = '';
     ViewsBulkOperationsBatch::getList($vbo_data, $context);
-    if (!isset($context['finished'])) {
-      $context['finished'] = 1;
+    if (!empty($context['message'])) {
+      drush_log($context['message'], 'ok');
     }
-    drush_log($context['message'], 'ok');
   } while ($context['finished'] < 1);
   $vbo_data = $context['results'];
 
   // Execute the selected action.
   $context = [];
   do {
+    $context['finished'] = 1;
+    $context['message'] = '';
     ViewsBulkOperationsBatch::operation($vbo_data, $context);
-    if (!isset($context['finished'])) {
-      $context['finished'] = 1;
+    if (!empty($context['message'])) {
+      drush_log($context['message'], 'ok');
     }
-    drush_log($context['message'], 'ok');
   } while ($context['finished'] < 1);
 
   // Output a summary message.

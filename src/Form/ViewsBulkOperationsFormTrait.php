@@ -3,7 +3,6 @@
 namespace Drupal\views_bulk_operations\Form;
 
 use Drupal\Core\Entity\EntityInterface;
-use Drupal\Core\Entity\RevisionableInterface;
 
 /**
  * Defines common methods for Views Bulk Operations forms.
@@ -46,7 +45,7 @@ trait ViewsBulkOperationsFormTrait {
       $form_data['selected_count'] = 0;
       foreach ($form_data['list'] as $item) {
         $form_data['selected_count']++;
-        $form_data['entity_labels'][] = $item[0];
+        $form_data['entity_labels'][] = $item[4];
       }
     }
     elseif ($form_data['total_results']) {
@@ -80,24 +79,40 @@ trait ViewsBulkOperationsFormTrait {
    *
    * @see self::loadEntityFromBulkFormKey()
    */
-  public static function calculateEntityBulkFormKey(EntityInterface $entity, $use_revision, $base_field_value) {
+  public static function calculateEntityBulkFormKey(EntityInterface $entity, $base_field_value) {
+    // We don't really need the entity ID or type ID, since only the
+    // base field value and language are used to select rows, but
+    // other omdules may need those values.
     $key_parts = [
       $base_field_value,
       $entity->language()->getId(),
       $entity->getEntityTypeId(),
       $entity->id(),
-      0,
     ];
-
-    if ($entity instanceof RevisionableInterface && $use_revision) {
-      $key_parts[4] = $entity->getRevisionId();
-    }
 
     // An entity ID could be an arbitrary string (although they are typically
     // numeric). JSON then Base64 encoding ensures the bulk_form_key is
     // safe to use in HTML, and that the key parts can be retrieved.
     $key = json_encode($key_parts);
     return base64_encode($key);
+  }
+
+  /**
+   * Get an entity list item from a bulk form key and label.
+   *
+   * @param string $bulkFormKey
+   *   A bulk form key.
+   * @param mixed $label
+   *   Entity label, string or
+   *   \Drupal\Core\StringTranslation\TranslatableMarkup.
+   *
+   * @return array
+   *   Entity list item.
+   */
+  protected function getListItem($bulkFormKey, $label) {
+    $item = json_decode(base64_decode($bulkFormKey));
+    $item[] = $label;
+    return $item;
   }
 
   /**

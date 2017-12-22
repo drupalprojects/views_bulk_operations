@@ -202,12 +202,11 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
     $this->view->query->execute($this->view);
 
     $base_field = $this->view->storage->get('base_field');
-
     foreach ($this->view->result as $row) {
       $entity = $this->viewDataService->getEntity($row);
+
       // We don't need entity label here.
       $list[] = [
-        '',
         $row->{$base_field},
         $entity->language()->getId(),
         $entity->getEntityTypeId(),
@@ -246,7 +245,7 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
 
     $base_field_values = [];
     foreach ($batch_list as $item) {
-      $base_field_values[] = $item[1];
+      $base_field_values[] = $item[0];
     }
     if (empty($base_field_values)) {
       return 0;
@@ -273,7 +272,7 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
       $found = FALSE;
       $entity = $this->viewDataService->getEntity($row);
       foreach ($batch_list as $delta => $item) {
-        if ($row->{$base_field} === $item[1] && $entity->language()->getId() === $item[2]) {
+        if ($row->{$base_field} === $item[0] && $entity->language()->getId() === $item[1]) {
           $this->queue[] = $entity;
           $found = TRUE;
           unset($batch_list[$delta]);

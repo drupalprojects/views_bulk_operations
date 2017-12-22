@@ -531,7 +531,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         $entity = $this->getEntity($row);
         $bulk_form_key = self::calculateEntityBulkFormKey(
           $entity,
-          $use_revision,
           $row->{$base_field}
         );
 
@@ -725,8 +724,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         // Update list data with the form selection.
         foreach ($form_state->getValue($this->options['id']) as $row_index => $bulkFormKey) {
           if ($bulkFormKey) {
-            $item = array_merge([$form[$this->options['id']][$row_index]['#title']], json_decode(base64_decode($bulkFormKey)));
-            $this->tempStoreData['list'][$bulkFormKey] = $item;
+            $this->tempStoreData['list'][$bulkFormKey] = $this->getListItem($bulkFormKey, $form[$this->options['id']][$row_index]['#title']);
           }
         }
       }

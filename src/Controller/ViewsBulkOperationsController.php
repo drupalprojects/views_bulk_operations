@@ -102,8 +102,7 @@ class ViewsBulkOperationsController extends ControllerBase implements ContainerI
     if ($op === 'add') {
       foreach ($list as $bulkFormKey => $label) {
         if (!isset($view_data['list'][$bulkFormKey])) {
-          $item = array_merge([$label], json_decode(base64_decode($bulkFormKey)));
-          $view_data['list'][$bulkFormKey] = $item;
+          $view_data['list'][$bulkFormKey] = $this->getListItem($bulkFormKey, $label);
           $change++;
         }
       }
