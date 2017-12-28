@@ -12,8 +12,6 @@ use Drupal\Core\Session\AccountInterface;
  *   id = "views_bulk_operations_passing_test_action",
  *   label = @Translation("VBO parameters passing test action"),
  *   type = "node",
- *   pass_view = TRUE,
- *   pass_context = TRUE,
  * )
  */
 class ViewsBulkOperationsPassTestAction extends ViewsBulkOperationsActionBase {

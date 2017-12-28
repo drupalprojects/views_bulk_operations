@@ -17,8 +17,6 @@ use Drupal\views\ViewExecutable;
  *   label = @Translation("VBO advanced test action"),
  *   type = "",
  *   confirm = TRUE,
- *   pass_context = TRUE,
- *   pass_view = TRUE,
  *   requirements = {
  *     "_permission" = "execute advanced test action",
  *   },

@@ -19,8 +19,6 @@ use Drupal\Core\Session\AccountInterface;
  *   label = @Translation("VBO example action"),
  *   type = "",
  *   confirm = TRUE,
- *   pass_context = TRUE,
- *   pass_view = TRUE,
  * )
  */
 class ViewsBulkOperationExampleAction extends ViewsBulkOperationsActionBase implements ViewsBulkOperationsPreconfigurationInterface, PluginFormInterface {

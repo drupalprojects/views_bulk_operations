@@ -39,11 +39,6 @@ Available annotation parameters:
   - confirm_form_route_name: Route name of the action confirmation form.
     If left empty and the previous parameter is empty, there will be
     no confirmation step (default: empty string).
-  - pass_context: If set to TRUE, the entire batch context 
-    will be added to the action $context parameter (default: FALSE).
-  - pass_view: If set to TRUE, the entire view with selected
-    results ($view->result) of the current batch will be available
-    in the action $view parameter (default: FALSE).
   - requirements: an array of requirements an action must meet
     to be displayed on the action selection form. At the moment
     only one possible requirement is supported: '_permission', if

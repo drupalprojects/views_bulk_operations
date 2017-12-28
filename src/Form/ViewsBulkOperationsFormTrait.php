@@ -67,9 +67,6 @@ trait ViewsBulkOperationsFormTrait {
    *
    * @param \Drupal\Core\Entity\EntityInterface $entity
    *   The entity to calculate a bulk form key for.
-   * @param bool $use_revision
-   *   Whether the revision id should be added to the bulk form key. This should
-   *   be set to TRUE only if the view is listing entity revisions.
    * @param mixed $base_field_value
    *   The value of the base field for this result.
    *

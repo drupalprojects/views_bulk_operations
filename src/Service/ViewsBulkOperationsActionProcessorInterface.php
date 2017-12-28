@@ -47,6 +47,11 @@ interface ViewsBulkOperationsActionProcessorInterface {
   public function setActionContext(array $context);
 
   /**
+   * Sets the current view object as an action parameter.
+   */
+  public function setActionView();
+
+  /**
    * Process results.
    */
   public function process();

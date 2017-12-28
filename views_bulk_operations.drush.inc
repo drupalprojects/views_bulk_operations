@@ -15,7 +15,7 @@ function views_bulk_operations_drush_command() {
   return [
     'views-bulk-operations-execute' => [
       'description' => 'Execute an action on all results of the given view.',
-      'aliases' => ['vbo-execute'],
+      'aliases' => ['vbo-execute', 'vbo-exec'],
       'arguments' => [
         'view_id' => 'The ID of the view to use',
         'action_id' => 'The ID of the action to execute',
@@ -26,6 +26,7 @@ function views_bulk_operations_drush_command() {
         'exposed' => 'Exposed filters (query string format)',
         'batch-size' => 'Processing batch size (default: 100)',
         'config' => 'Action configuration (query string format)',
+        'debug' => 'Include additional debugging information.',
       ],
       'examples' => [
         'drush vbo-execute some_view some_action --user=1' => 'Execute some action on some view as the superuser.',
@@ -37,6 +38,45 @@ function views_bulk_operations_drush_command() {
 }
 
 /**
+ * Helper function to set / get timer.
+ *
+ * @param bool $debug
+ *   Should the function do anything at all?
+ * @param string $id
+ *   ID of a specific timer span.
+ *
+ * @return mixed
+ *   NULL or value of a specific timer if set.
+ */
+function _views_bulk_operations_timer($debug = TRUE, $id = NULL) {
+  if (!$debug) {
+    return;
+  }
+
+  static $timers = [];
+
+  if (!isset($id)) {
+    $timers['start'] = microtime(TRUE);
+  }
+  else {
+    if (isset($timers[$id])) {
+      end($timers);
+      do {
+        if (key($timers) === $id) {
+          return round((current($timers) - prev($timers)) * 1000, 3);
+        }
+        else {
+          $result = prev($timers);
+        }
+      } while ($result);
+    }
+    else {
+      $timers[$id] = microtime(TRUE);
+    }
+  }
+}
+
+/**
  * The vbo-exec command executtion function.
  *
  * @param string $view_id
@@ -45,6 +85,9 @@ function views_bulk_operations_drush_command() {
  *   The ID of the action to execute.
  */
 function drush_views_bulk_operations_execute($view_id, $action_id) {
+
+  $debug = drush_get_option('debug', FALSE);
+  _views_bulk_operations_timer($debug);
 
   // Prepare parameters.
   $arguments = drush_get_option('args', FALSE);
@@ -119,6 +162,8 @@ function drush_views_bulk_operations_execute($view_id, $action_id) {
   }
   $vbo_data['action_label'] = (string) $action_definition['label'];
 
+  _views_bulk_operations_timer($debug, 'init');
+
   // Populate entity list.
   $context = [];
   do {
@@ -130,6 +175,8 @@ function drush_views_bulk_operations_execute($view_id, $action_id) {
     }
   } while ($context['finished'] < 1);
   $vbo_data = $context['results'];
+
+  _views_bulk_operations_timer($debug, 'list');
 
   // Execute the selected action.
   $context = [];
@@ -149,4 +196,12 @@ function drush_views_bulk_operations_execute($view_id, $action_id) {
     $details[] = $op . ' (' . $count . ')';
   }
   drush_log(dt('Action processing results: @results.', ['@results' => implode(', ', $details)]), 'ok');
+
+  // Display debug information.
+  if ($debug) {
+    _views_bulk_operations_timer($debug, 'execute');
+    drush_print(sprintf('Initialization time: %d ms.', _views_bulk_operations_timer($debug, 'init')));
+    drush_print(sprintf('Entity list generation time: %d ms.', _views_bulk_operations_timer($debug, 'list')));
+    drush_print(sprintf('Execution time: %d ms.', _views_bulk_operations_timer($debug, 'execute')));
+  }
 }

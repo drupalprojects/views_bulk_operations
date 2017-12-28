@@ -614,8 +614,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         $form['header'][$this->options['id']]['multipage'] = [
           '#type' => 'details',
           '#open' => (count($this->tempStoreData['list']) > $page_selected),
-          '#title' => $this->t('Multipage selection'),
-          '#description' => $this->t('Selected %count items.', [
+          '#title' => $this->t('Entire selection'),
+          '#description' => $this->t('Selected %count items in this view.', [
             '%count' => count($this->tempStoreData['list']),
           ]),
           '#attributes' => [

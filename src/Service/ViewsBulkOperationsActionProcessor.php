@@ -294,21 +294,16 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
           $context['sandbox']['total'] = count($list);
         }
       }
-      if ($this->actionDefinition['pass_context']) {
-        // Add batch size to context array for potential use in actions.
-        $context['sandbox']['batch_size'] = $batch_size;
-
-        $this->action->setContext($context);
-      }
+      // Add batch size to context array for potential use in actions.
+      $context['sandbox']['batch_size'] = $batch_size;
+      $this->setActionContext($context);
     }
 
     if ($batch_size) {
       $current_batch++;
     }
 
-    if ($this->actionDefinition['pass_view']) {
-      $this->action->setView($this->view);
-    }
+    $this->setActionView();
 
     return count($this->queue);
   }
@@ -319,6 +314,15 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
   public function setActionContext(array $context) {
     if (isset($this->action) && method_exists($this->action, 'setContext')) {
       $this->action->setContext($context);
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setActionView() {
+    if (isset($this->action) && method_exists($this->action, 'setView')) {
+      $this->action->setView($this->view);
     }
   }
 
