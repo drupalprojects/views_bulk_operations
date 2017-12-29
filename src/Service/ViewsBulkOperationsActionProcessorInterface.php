@@ -39,19 +39,6 @@ interface ViewsBulkOperationsActionProcessorInterface {
   public function populateQueue(array $list, array &$context = []);
 
   /**
-   * Set action context if action method exists.
-   *
-   * @param array $context
-   *   The context to be set.
-   */
-  public function setActionContext(array $context);
-
-  /**
-   * Sets the current view object as an action parameter.
-   */
-  public function setActionView();
-
-  /**
    * Process results.
    */
   public function process();

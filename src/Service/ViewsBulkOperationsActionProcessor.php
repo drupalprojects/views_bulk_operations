@@ -309,18 +309,21 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
   }
 
   /**
-   * {@inheritdoc}
+   * Set action context if action method exists.
+   *
+   * @param array $context
+   *   The context to be set.
    */
-  public function setActionContext(array $context) {
+  protected function setActionContext(array $context) {
     if (isset($this->action) && method_exists($this->action, 'setContext')) {
       $this->action->setContext($context);
     }
   }
 
   /**
-   * {@inheritdoc}
+   * Sets the current view object as the executed action parameter.
    */
-  public function setActionView() {
+  protected function setActionView() {
     if (isset($this->action) && method_exists($this->action, 'setView')) {
       $this->action->setView($this->view);
     }

@@ -176,15 +176,12 @@ class ViewsBulkOperationsViewData implements ViewsBulkOperationsViewDataInterfac
   /**
    * Get the total count of results on all pages.
    *
-   * TODO: Find a way to get total number of results with mini pager.
-   *
    * @return int
    *   The total number of results this view displays.
    */
   public function getTotalResults() {
-    // This number is not correct in $this->view->total_rows for
-    // standard entity views and different pagers, so we have to build
-    // a custom count query in such a case.
+    // This number is not correct in some cases.
+    // this method ensures a uniform procedure in all cases.
     if (isset($this->view->query)) {
       $query = $this->view->query->query();
     }
