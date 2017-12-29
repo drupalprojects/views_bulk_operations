@@ -31,25 +31,27 @@
      * @param {jQuery} element
      */
     bindEventHandlers: function ($element) {
-      var selectionObject = this;
-      $element.on('keypress', function (event) {
-        // Emulate click action for enter key.
-        if (event.which === 13) {
-          event.preventDefault();
-          event.stopPropagation();
-          selectionObject.update(this.checked, $(this).val());
-          $(this).trigger('click');
-        }
-        if (event.which === 32) {
-          selectionObject.update(this.checked, $(this).val());
-        }
-      });
-      $element.on('mousedown', function (event) {
-        // Act only on left button click.
-        if (event.which === 1) {
-          selectionObject.update(this.checked, $(this).val());
-        }
-      });
+      if ($element.length) {
+        var selectionObject = this;
+        $element.on('keypress', function (event) {
+          // Emulate click action for enter key.
+          if (event.which === 13) {
+            event.preventDefault();
+            event.stopPropagation();
+            selectionObject.update(this.checked, $(this).val());
+            $(this).trigger('click');
+          }
+          if (event.which === 32) {
+            selectionObject.update(this.checked, $(this).val());
+          }
+        });
+        $element.on('mousedown', function (event) {
+          // Act only on left button click.
+          if (event.which === 1) {
+            selectionObject.update(this.checked, $(this).val());
+          }
+        });
+      }
     },
 
     /**
@@ -92,10 +94,8 @@
   Drupal.viewsBulkOperationsFrontUi = function () {
     var $viewContent = $(this);
     var $viewsTable = $('table.views-table', $viewContent);
-    var colspan = $('table.views-table > thead th', $viewContent).length;
     var $primarySelectAll = $('.vbo-select-all', $viewContent);
     var $tableSelectAll = $(this).find('.select-all input').first();
-    $primarySelectAll.parent().hide();
 
     // Add AJAX functionality to table checkboxes.
     var $multiSelectElement = $viewContent.find('.vbo-multipage-selector').first();
@@ -105,61 +105,82 @@
 
       // Get the list of all checkbox values and add AJAX callback.
       Drupal.viewsBulkOperationsSelection.list = {};
-      $viewsTable.find('tbody .views-field-views-bulk-operations-bulk-form input[type="checkbox"]').each(function () {
-        Drupal.viewsBulkOperationsSelection.list[$(this).val()] = $(this).parent().find('label').first().text();
-        Drupal.viewsBulkOperationsSelection.bindEventHandlers($(this));
+      $viewContent.find('.views-field-views-bulk-operations-bulk-form input[type="checkbox"]').each(function () {
+        var value = $(this).val();
+        if (value != 'on') {
+          Drupal.viewsBulkOperationsSelection.list[value] = $(this).parent().find('label').first().text();
+          Drupal.viewsBulkOperationsSelection.bindEventHandlers($(this));
+        }
       });
       Drupal.viewsBulkOperationsSelection.view_id = $multiSelectElement.attr('data-view-id');
       Drupal.viewsBulkOperationsSelection.display_id = $multiSelectElement.attr('data-display-id');
 
       // Bind event handlers to select all checkbox.
-      Drupal.viewsBulkOperationsSelection.bindEventHandlers($tableSelectAll);
+      if ($tableSelectAll.length) {
+        Drupal.viewsBulkOperationsSelection.bindEventHandlers($tableSelectAll);
+      }
     }
 
-    var strings = {
-      selectAll: $('label', $primarySelectAll.parent()).html(),
-      selectRegular: Drupal.t('Select only items on this page')
-    };
+    // Initialize all selector if the view table exists.
+    if ($viewsTable.length) {
+      var strings = {
+        selectAll: $('label', $primarySelectAll.parent()).html(),
+        selectRegular: Drupal.t('Select only items on this page')
+      };
 
-    // Initialize all selector.
-    var $allSelector;
-    $allSelector = $('<tr class="views-table-row-vbo-select-all even" style="display: none"><td colspan="' + colspan + '"><div><input type="submit" class="form-submit" value="' + strings.selectAll + '"></div></td></tr>');
-    $('tbody', $viewsTable).prepend($allSelector);
+      $primarySelectAll.parent().hide();
+      var colspan = $('table.views-table > thead th', $viewContent).length;
 
-    if ($primarySelectAll.is(':checked')) {
-      $('input', $allSelector).val(strings.selectRegular);
-      $allSelector.show();
-    }
-    else if ($tableSelectAll.is(':checked')) {
-      $allSelector.show();
-    }
+      var $allSelector = $('<tr class="views-table-row-vbo-select-all even" style="display: none"><td colspan="' + colspan + '"><div><input type="submit" class="form-submit" value="' + strings.selectAll + '"></div></td></tr>');
+      $('tbody', $viewsTable).prepend($allSelector);
 
-    $('input', $allSelector).on('click', function (event) {
-      event.preventDefault();
       if ($primarySelectAll.is(':checked')) {
-        $primarySelectAll.prop('checked', false);
-        $allSelector.removeClass('all-selected');
-        $(this).val(strings.selectAll);
-      }
-      else {
-        $primarySelectAll.prop('checked', true);
-        $allSelector.addClass('all-selected');
-        $(this).val(strings.selectRegular);
-      }
-    });
-
-    $tableSelectAll.on('change', function (event) {
-      if (this.checked) {
+        $('input', $allSelector).val(strings.selectRegular);
         $allSelector.show();
       }
-      else {
-        $allSelector.hide();
-        if ($primarySelectAll.is(':checked')) {
-          $('input', $allSelector).trigger('click');
-        }
+      else if ($tableSelectAll.is(':checked')) {
+        $allSelector.show();
       }
 
-    });
+      $('input', $allSelector).on('click', function (event) {
+        event.preventDefault();
+        if ($primarySelectAll.is(':checked')) {
+          $multiSelectElement.show('fast');
+          $primarySelectAll.prop('checked', false);
+          $allSelector.removeClass('all-selected');
+          $(this).val(strings.selectAll);
+        }
+        else {
+          $multiSelectElement.hide('fast');
+          $primarySelectAll.prop('checked', true);
+          $allSelector.addClass('all-selected');
+          $(this).val(strings.selectRegular);
+        }
+      });
+
+      $tableSelectAll.on('change', function (event) {
+        if (this.checked) {
+          $allSelector.show();
+        }
+        else {
+          $allSelector.hide();
+          if ($primarySelectAll.is(':checked')) {
+            $('input', $allSelector).trigger('click');
+          }
+        }
+
+      });
+    }
+    else {
+      $primarySelectAll.on('change', function (event) {
+        if (this.checked) {
+          $multiSelectElement.hide('fast');
+        }
+        else {
+          $multiSelectElement.show('fast');
+        }
+      });
+    }
   };
 
 })(jQuery, Drupal);

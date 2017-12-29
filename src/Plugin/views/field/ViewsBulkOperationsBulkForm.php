@@ -231,7 +231,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     // Update some of the tempstore data parameters if required.
     else {
       // Delete list if view arguments changed.
-      // NOTE: this should be subject to a discussion.
+      // NOTE: this should be subject to a discussion, maybe tempstore
+      // should be arguments - specific?
       if (!empty(array_diff($variable['arguments'], $this->tempStoreData['arguments']))) {
         $this->tempStoreData['arguments'] = $variable['arguments'];
         $this->tempStoreData['list'] = [];
@@ -504,8 +505,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     // Add VBO front UI and tableselect libraries for table display style.
     if ($this->view->style_plugin instanceof Table) {
       $form['#attached']['library'][] = 'core/drupal.tableselect';
-      $form['#attached']['library'][] = 'views_bulk_operations/frontUi';
     }
+    $form['#attached']['library'][] = 'views_bulk_operations/frontUi';
 
     // Only add the bulk form options and buttons if
     // there are results and any actions are available.
