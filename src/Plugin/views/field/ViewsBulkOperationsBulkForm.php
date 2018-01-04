@@ -720,6 +720,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       $this->tempStoreData['relationship_id'] = $this->options['relationship'];
       $this->tempStoreData['preconfiguration'] = isset($this->options['preconfiguration'][$action_id]) ? $this->options['preconfiguration'][$action_id] : [];
       $this->tempStoreData['current_page'] = $this->pagerData['current'];
+      $this->tempStoreData['redirect_url'] = Url::createFromRequest(\Drupal::request());
 
       if (!$form_state->getValue('select_all')) {
         // Update list data with the form selection.
@@ -760,9 +761,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         if (!empty($action['confirm_form_route_name'])) {
           $redirect_route = $action['confirm_form_route_name'];
         }
-        else {
-          $redirect_route = 'views_bulk_operations.execute_batch';
-        }
       }
       elseif (!empty($action['confirm_form_route_name'])) {
         $redirect_route = $action['confirm_form_route_name'];
@@ -770,8 +768,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       // Redirect if needed.
       if (!empty($redirect_route)) {
-        $this->tempStoreData['redirect_url'] = Url::createFromRequest(\Drupal::request());
-
         $this->setTempstoreData($this->tempStoreData);
 
         $form_state->setRedirect($redirect_route, [
@@ -783,6 +779,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       else {
         $this->deleteTempstoreData();
         $this->actionProcessor->executeProcessing($this->tempStoreData, $this->view);
+        $form_state->setRedirectUrl($this->tempStoreData['redirect_url']);
       }
     }
   }
