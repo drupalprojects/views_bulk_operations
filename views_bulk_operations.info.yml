@@ -4,5 +4,4 @@ description: 'Adds an ability to perform bulk operations on selected entities fr
 package: 'Views'
 core: 8.x
 dependencies:
-  - system (>=8.4)
-  - drupal:views
+  - drupal:views (>=8.4)

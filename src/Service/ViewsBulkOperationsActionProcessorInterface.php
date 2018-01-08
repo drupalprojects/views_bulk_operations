@@ -53,12 +53,4 @@ interface ViewsBulkOperationsActionProcessorInterface {
    */
   public function executeProcessing(array &$data, $view = NULL);
 
-  /**
-   * Get the current entity queue.
-   *
-   * @return array
-   *   Array of entities from the current queue.
-   */
-  public function getQueue();
-
 }

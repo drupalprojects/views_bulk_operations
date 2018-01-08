@@ -80,6 +80,7 @@ class ViewsBulkOperationsDataServiceTest extends KernelTestBase {
     user_login_finalize($user);
 
     $this->installConfig([
+      'system',
       'filter',
       'views_bulk_operations_test',
       'language',

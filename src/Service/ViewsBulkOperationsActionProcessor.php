@@ -2,7 +2,6 @@
 
 namespace Drupal\views_bulk_operations\Service;
 
-use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\views\Views;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
@@ -25,13 +24,6 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
   protected $viewDataService;
 
   /**
-   * Entity type manager.
-   *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
-   */
-  protected $entityTypeManager;
-
-  /**
    * VBO action manager.
    *
    * @var \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager
@@ -43,7 +35,7 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
    *
    * @var \Drupal\Core\Session\AccountProxyInterface
    */
-  protected $user;
+  protected $currentUser;
 
   /**
    * Module handler service.
@@ -58,13 +50,6 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
    * @var bool
    */
   protected $initialized = FALSE;
-
-  /**
-   * Definition of the processed action.
-   *
-   * @var array
-   */
-  protected $actionDefinition;
 
   /**
    * The processed action object.
@@ -99,26 +84,22 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
    *
    * @param \Drupal\views_bulk_operations\Service\ViewsbulkOperationsViewDataInterface $viewDataService
    *   View data provider service.
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
-   *   Entity type manager.
    * @param \Drupal\views_bulk_operations\Service\ViewsBulkOperationsActionManager $actionManager
    *   VBO action manager.
-   * @param \Drupal\Core\Session\AccountProxyInterface $user
+   * @param \Drupal\Core\Session\AccountProxyInterface $currentUser
    *   Current user object.
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    *   Module handler service.
    */
   public function __construct(
     ViewsbulkOperationsViewDataInterface $viewDataService,
-    EntityTypeManagerInterface $entityTypeManager,
     ViewsBulkOperationsActionManager $actionManager,
-    AccountProxyInterface $user,
+    AccountProxyInterface $currentUser,
     ModuleHandlerInterface $moduleHandler
   ) {
     $this->viewDataService = $viewDataService;
-    $this->entityTypeManager = $entityTypeManager;
     $this->actionManager = $actionManager;
-    $this->user = $user;
+    $this->currentUser = $currentUser;
     $this->moduleHandler = $moduleHandler;
   }
 
@@ -142,7 +123,6 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
     }
 
     // Initialize action object.
-    $this->actionDefinition = $this->actionManager->getDefinition($view_data['action_id']);
     $this->action = $this->actionManager->createInstance($view_data['action_id'], $view_data['configuration']);
 
     // Set action context.
@@ -344,9 +324,10 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
     }
 
     // Check entity type for multi-type views like search_api index.
-    if (!empty($this->actionDefinition['type'])) {
+    $action_definition = $this->actionManager->getDefinition($this->bulkFormData['action_id']);
+    if (!empty($action_definition['type'])) {
       foreach ($this->queue as $delta => $entity) {
-        if ($entity->getEntityTypeId() !== $this->actionDefinition['type']) {
+        if ($entity->getEntityTypeId() !== $action_definition['type']) {
           $output[] = $this->t('Entity type not supported');
           unset($this->queue[$delta]);
         }
@@ -355,7 +336,7 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
 
     // Check access.
     foreach ($this->queue as $delta => $entity) {
-      if (!$this->action->access($entity, $this->user)) {
+      if (!$this->action->access($entity, $this->currentUser)) {
         $output[] = $this->t('Access denied');
         unset($this->queue[$delta]);
       }
@@ -407,13 +388,6 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
       }
       ViewsBulkOperationsBatch::finished(TRUE, $results, []);
     }
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getQueue() {
-    return $this->queue;
   }
 
 }

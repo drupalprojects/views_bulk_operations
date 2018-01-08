@@ -93,7 +93,7 @@
    */
   Drupal.viewsBulkOperationsFrontUi = function () {
     var $viewContent = $(this);
-    var $viewsTable = $('table.views-table', $viewContent);
+    var $viewsTable = $('.vbo-table', $viewContent);
     var $primarySelectAll = $('.vbo-select-all', $viewContent);
     var $tableSelectAll = $(this).find('.select-all input').first();
 
@@ -129,7 +129,7 @@
       };
 
       $primarySelectAll.parent().hide();
-      var colspan = $('table.views-table > thead th', $viewContent).length;
+      var colspan = $('thead th', $viewsTable).length;
 
       var $allSelector = $('<tr class="views-table-row-vbo-select-all even" style="display: none"><td colspan="' + colspan + '"><div><input type="submit" class="form-submit" value="' + strings.selectAll + '"></div></td></tr>');
       $('tbody', $viewsTable).prepend($allSelector);
