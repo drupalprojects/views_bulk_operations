@@ -613,11 +613,10 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
         }
       }
 
-      // Select all results checkbox and selection info.
-      if (isset($pagerData) && ($pagerData['more'] || $pagerData['current'] > 0)) {
-
-        // Add view_id and display_id to be available for
-        // js multipage selector functionality.
+      $display_select_all = isset($pagerData) && ($pagerData['more'] || $pagerData['current'] > 0);
+      // Selection info: displayed if exposed filters are set or
+      // "select all" element display conditions are met.
+      if (!empty($this->view->getExposedInput()) || $display_select_all) {
         $form['header'][$this->options['id']]['multipage'] = [
           '#type' => 'details',
           '#open' => (count($this->tempStoreData['list']) > $page_selected),
@@ -626,6 +625,8 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
             '%count' => count($this->tempStoreData['list']),
           ]),
           '#attributes' => [
+            // Add view_id and display_id to be available for
+            // js multipage selector functionality.
             'data-view-id' => $this->tempStoreData['view_id'],
             'data-display-id' => $this->tempStoreData['display_id'],
             'class' => ['vbo-multipage-selector'],
@@ -638,7 +639,10 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
           '#submit' => [[$this, 'clearSelection']],
           '#limit_validation_errors' => [],
         ];
+      }
 
+      // Select all results checkbox.
+      if ($display_select_all) {
         $form['header'][$this->options['id']]['select_all'] = [
           '#type' => 'checkbox',
           '#title' => $this->t('Select all@count results in this view', [
