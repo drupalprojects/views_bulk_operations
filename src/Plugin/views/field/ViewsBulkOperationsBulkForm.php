@@ -721,10 +721,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
       $action = $this->actions[$action_id];
 
-      // Update tempstore data to make sure we have also
-      // results selected in other requests.
-      $this->tempStoreData = $this->getTempstoreData();
-
       $this->tempStoreData['action_id'] = $action_id;
       $this->tempStoreData['action_label'] = empty($this->options['preconfiguration'][$action_id]['label_override']) ? (string) $action['label'] : $this->options['preconfiguration'][$action_id]['label_override'];
       $this->tempStoreData['relationship_id'] = $this->options['relationship'];
@@ -824,8 +820,12 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     }
 
     if (!$form_state->getValue('select_all')) {
+      // Update tempstore data to make sure we have also
+      // results selected in other requests and validate if
+      // anything is selected.
+      $this->tempStoreData = $this->getTempstoreData();
       $selected = array_filter($form_state->getValue($this->options['id']));
-      if (empty($selected)) {
+      if (empty($this->tempStoreData['list']) && empty($selected)) {
         $form_state->setErrorByName('', $this->t('No items selected.'));
       }
     }
