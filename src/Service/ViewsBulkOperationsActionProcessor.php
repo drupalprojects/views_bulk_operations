@@ -236,9 +236,17 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
     $this->view->setOffset(0);
     $this->view->build();
 
-    $base_table = $this->view->storage->get('base_table');
     $base_field = $this->view->storage->get('base_field');
-    $this->view->query->addWhere(0, "$base_table.$base_field", $base_field_values, 'IN');
+
+    // Determine the base field alias expression.
+    if (isset($this->view->query->fields[$base_field])) {
+      $base_field_alias = $this->view->query->fields[$base_field]['table'] . '.' . $this->view->query->fields[$base_field]['alias'];
+    }
+    else {
+      $base_field_alias = $base_field;
+    }
+
+    $this->view->query->addWhere(0, $base_field_alias, $base_field_values, 'IN');
     $this->view->query->build($this->view);
 
     // Execute the view.
