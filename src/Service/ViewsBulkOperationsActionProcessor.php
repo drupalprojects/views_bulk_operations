@@ -236,8 +236,9 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
     $this->view->setOffset(0);
     $this->view->build();
 
+    $base_table = $this->view->storage->get('base_table');
     $base_field = $this->view->storage->get('base_field');
-    $this->view->query->addWhere(0, $base_field, $base_field_values, 'IN');
+    $this->view->query->addWhere(0, "$base_table.$base_field", $base_field_values, 'IN');
     $this->view->query->build($this->view);
 
     // Execute the view.
