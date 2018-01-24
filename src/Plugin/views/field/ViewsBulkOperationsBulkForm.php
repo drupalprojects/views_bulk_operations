@@ -506,6 +506,9 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     // @todo Evaluate this again in https://www.drupal.org/node/2503009.
     $form['#cache']['max-age'] = 0;
 
+    // Add VBO class to the form.
+    $form['#attributes']['class'][] = 'vbo-view-form';
+
     // Add VBO front UI and tableselect libraries for table display style.
     if ($this->view->style_plugin instanceof Table) {
       $form['#attached']['library'][] = 'core/drupal.tableselect';

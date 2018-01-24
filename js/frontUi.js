@@ -12,7 +12,7 @@
    */
   Drupal.behaviors.views_bulk_operations = {
     attach: function (context, settings) {
-      $('.vbo-select-all').closest('.view-content').once('select-all').each(Drupal.viewsBulkOperationsFrontUi);
+      $('.vbo-view-form').closest('.view-content').once('vbo-init').each(Drupal.viewsBulkOperationsFrontUi);
     }
   };
 
@@ -121,8 +121,9 @@
       }
     }
 
-    // Initialize all selector if the view table exists.
-    if ($viewsTable.length) {
+    // Initialize all selector if the primary select all and
+    // view table elements exist.
+    if ($primarySelectAll.length && $viewsTable.length) {
       var strings = {
         selectAll: $('label', $primarySelectAll.parent()).html(),
         selectRegular: Drupal.t('Select only items on this page')
