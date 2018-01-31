@@ -12,7 +12,7 @@
    */
   Drupal.behaviors.views_bulk_operations = {
     attach: function (context, settings) {
-      $('.vbo-view-form').closest('.view-content').once('vbo-init').each(Drupal.viewsBulkOperationsFrontUi);
+      $('.vbo-view-form').once('vbo-init').each(Drupal.viewsBulkOperationsFrontUi);
     }
   };
 
@@ -92,20 +92,23 @@
    * Callback used in {@link Drupal.behaviors.views_bulk_operations}.
    */
   Drupal.viewsBulkOperationsFrontUi = function () {
-    var $viewContent = $(this);
-    var $viewsTable = $('.vbo-table', $viewContent);
-    var $primarySelectAll = $('.vbo-select-all', $viewContent);
-    var $tableSelectAll = $(this).find('.select-all input').first();
+    var $vboForm = $(this);
+    var $viewsTable = $('.vbo-table', $vboForm);
+    var $primarySelectAll = $('.vbo-select-all', $vboForm);
+    var $tableSelectAll;
+    if ($viewsTable) {
+      $tableSelectAll = $viewsTable.find('.select-all input').first();
+    }
 
     // Add AJAX functionality to table checkboxes.
-    var $multiSelectElement = $viewContent.find('.vbo-multipage-selector').first();
+    var $multiSelectElement = $vboForm.find('.vbo-multipage-selector').first();
     if ($multiSelectElement.length) {
 
       Drupal.viewsBulkOperationsSelection.$placeholder = $multiSelectElement.find('.placeholder').first();
 
       // Get the list of all checkbox values and add AJAX callback.
       Drupal.viewsBulkOperationsSelection.list = {};
-      $viewContent.find('.views-field-views-bulk-operations-bulk-form input[type="checkbox"]').each(function () {
+      $vboForm.find('.views-field-views-bulk-operations-bulk-form input[type="checkbox"]').each(function () {
         var value = $(this).val();
         if (value != 'on') {
           Drupal.viewsBulkOperationsSelection.list[value] = $(this).parent().find('label').first().text();
@@ -116,7 +119,7 @@
       Drupal.viewsBulkOperationsSelection.display_id = $multiSelectElement.attr('data-display-id');
 
       // Bind event handlers to select all checkbox.
-      if ($tableSelectAll.length) {
+      if ($viewsTable.length && $tableSelectAll.length) {
         Drupal.viewsBulkOperationsSelection.bindEventHandlers($tableSelectAll);
       }
     }
