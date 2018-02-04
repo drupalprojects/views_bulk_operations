@@ -156,6 +156,9 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
     if (!empty($this->bulkFormData['arguments'])) {
       $this->view->setArguments($this->bulkFormData['arguments']);
     }
+    if (!empty($this->bulkFormData['exposed_input'])) {
+      $this->view->setExposedInput($this->bulkFormData['exposed_input']);
+    }
   }
 
   /**

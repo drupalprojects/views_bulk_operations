@@ -213,6 +213,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       'total_results' => $this->viewData->getTotalResults(),
       'arguments' => $this->view->args,
       'redirect_url' => $this->url,
+      'exposed_input' => $this->view->getExposedInput(),
     ];
 
     // Create tempstore data object if it doesn't exist.
@@ -234,16 +235,21 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
     // Update some of the tempstore data parameters if required.
     else {
-      // Delete list if view arguments changed.
-      // NOTE: this should be subject to a discussion, maybe tempstore
-      // should be arguments - specific?
-      if (!empty(array_diff($variable['arguments'], $this->tempStoreData['arguments']))) {
-        $this->tempStoreData['arguments'] = $variable['arguments'];
-        $this->tempStoreData['list'] = [];
-      }
-      unset($variable['arguments']);
-
       $update = FALSE;
+
+      // Delete list if view arguments and/or exposed filters changed.
+      // NOTE: this should be subject to a discussion, maybe tempstore
+      // should be input - specific?
+      $clear_triggers = ['arguments', 'exposed_input'];
+      foreach ($clear_triggers as $trigger) {
+        if ($variable[$trigger] !== $this->tempStoreData[$trigger]) {
+          $this->tempStoreData[$trigger] = $variable[$trigger];
+          $this->tempStoreData['list'] = [];
+        }
+        unset($variable[$trigger]);
+        $update = TRUE;
+      }
+
       foreach ($variable as $param => $value) {
         if (!isset($this->tempStoreData[$param]) || $this->tempStoreData[$param] != $value) {
           $update = TRUE;
@@ -740,9 +746,6 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       else {
         // Unset the list completely.
         $this->tempStoreData['list'] = [];
-
-        // Set exposed input.
-        $this->tempStoreData['exposed_input'] = $this->view->getExposedInput();
       }
 
       $configurable = $this->isConfigurable($action);
