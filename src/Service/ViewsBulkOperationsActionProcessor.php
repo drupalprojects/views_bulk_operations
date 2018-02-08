@@ -156,9 +156,6 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
     if (!empty($this->bulkFormData['arguments'])) {
       $this->view->setArguments($this->bulkFormData['arguments']);
     }
-    if (!empty($this->bulkFormData['exposed_input'])) {
-      $this->view->setExposedInput($this->bulkFormData['exposed_input']);
-    }
   }
 
   /**
@@ -169,6 +166,10 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
 
     $this->viewDataService->init($this->view, $this->view->getDisplay(), $this->bulkFormData['relationship_id']);
 
+    // Set exposed filters and pager parameters.
+    if (!empty($this->bulkFormData['exposed_input'])) {
+      $this->view->setExposedInput($this->bulkFormData['exposed_input']);
+    }
     $this->view->setItemsPerPage($this->bulkFormData['batch_size']);
     $this->view->setCurrentPage($page);
     $this->view->build();
@@ -237,19 +238,32 @@ class ViewsBulkOperationsActionProcessor implements ViewsBulkOperationsActionPro
     $this->view->setItemsPerPage(0);
     $this->view->setCurrentPage(0);
     $this->view->setOffset(0);
+    $this->view->initHandlers();
+
+    // Remove all exposed filters so we don't have any default filter
+    // values that could make the actual selection out of range.
+    if (!empty($this->view->filter)) {
+      foreach ($this->view->filter as $id => $filter) {
+        if (!empty($filter->options['exposed'])) {
+          unset($this->view->filter[$id]);
+        }
+      }
+    }
+
+    // Build the view query.
     $this->view->build();
 
+    // Modify the view query: determine and apply the base field condition.
     $base_field = $this->view->storage->get('base_field');
-
-    // Determine the base field alias expression.
     if (isset($this->view->query->fields[$base_field])) {
       $base_field_alias = $this->view->query->fields[$base_field]['table'] . '.' . $this->view->query->fields[$base_field]['alias'];
     }
     else {
       $base_field_alias = $base_field;
     }
-
     $this->view->query->addWhere(0, $base_field_alias, $base_field_values, 'IN');
+
+    // Rebuild the view query.
     $this->view->query->build($this->view);
 
     // Execute the view.

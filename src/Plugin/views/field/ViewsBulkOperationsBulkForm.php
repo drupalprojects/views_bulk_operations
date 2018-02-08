@@ -237,10 +237,14 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     else {
       $update = FALSE;
 
-      // Delete list if view arguments and/or exposed filters changed.
+      // Delete list if view arguments and optionally exposed filters changed.
       // NOTE: this should be subject to a discussion, maybe tempstore
-      // should be input - specific?
-      $clear_triggers = ['arguments', 'exposed_input'];
+      // should be arguments - specific?
+      $clear_triggers = ['arguments'];
+      if ($this->options['clear_on_exposed']) {
+        $clear_triggers[] = 'exposed_input';
+      }
+
       foreach ($clear_triggers as $trigger) {
         if ($variable[$trigger] !== $this->tempStoreData[$trigger]) {
           $this->tempStoreData[$trigger] = $variable[$trigger];
@@ -319,6 +323,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $options['batch_size'] = ['default' => 10];
     $options['form_step'] = ['default' => TRUE];
     $options['buttons'] = ['default' => FALSE];
+    $options['clear_on_exposed'] = ['default' => FALSE];
     $options['action_title'] = ['default' => $this->t('Action')];
     $options['selected_actions'] = ['default' => []];
     $options['preconfiguration'] = ['default' => []];
@@ -372,6 +377,12 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       '#type' => 'checkbox',
       '#title' => $this->t('Display selectable actions as buttons.'),
       '#default_value' => $this->options['buttons'],
+    ];
+
+    $form['clear_on_exposed'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Clear selection when exposed filters change.'),
+      '#default_value' => $this->options['clear_on_exposed'],
     ];
 
     $form['action_title'] = [
@@ -541,7 +552,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
 
       // Render checkboxes for all rows.
-      $page_selected = 0;
+      $page_selected = [];
       $base_field = $this->view->storage->get('base_field');
       foreach ($this->view->result as $row_index => $row) {
         $entity = $this->getEntity($row);
@@ -552,7 +563,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
 
         $checked = isset($this->tempStoreData['list'][$bulk_form_key]);
         if ($checked) {
-          $page_selected++;
+          $page_selected[] = $bulk_form_key;
         }
         $form[$this->options['id']][$row_index] = [
           '#type' => 'checkbox',
@@ -623,14 +634,15 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       }
 
       $display_select_all = isset($pagerData) && ($pagerData['more'] || $pagerData['current'] > 0);
-      // Selection info: displayed if exposed filters are set or
-      // "select all" element display conditions are met.
-      if (!empty($this->view->getExposedInput()) || $display_select_all) {
+      // Selection info: displayed if exposed filters are set and selection
+      // is not cleared when they change or "select all" element display
+      // conditions are met.
+      if ((!$this->options['clear_on_exposed'] && !empty($this->view->getExposedInput())) || $display_select_all) {
+
         $form['header'][$this->options['id']]['multipage'] = [
           '#type' => 'details',
-          '#open' => (count($this->tempStoreData['list']) > $page_selected),
-          '#title' => $this->t('Entire selection'),
-          '#description' => $this->t('Selected %count items in this view.', [
+          '#open' => FALSE,
+          '#title' => $this->t('Selected %count items in this view', [
             '%count' => count($this->tempStoreData['list']),
           ]),
           '#attributes' => [
@@ -642,12 +654,27 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
             'name' => 'somename',
           ],
         ];
-        $form['header'][$this->options['id']]['multipage']['clear'] = [
-          '#type' => 'submit',
-          '#value' => $this->t('Clear selection'),
-          '#submit' => [[$this, 'clearSelection']],
-          '#limit_validation_errors' => [],
+
+        // Display a list of items selected on other pages.
+        $form['header'][$this->options['id']]['multipage']['list'] = [
+          '#theme' => 'item_list',
+          '#title' => $this->t('Items selected on other pages:'),
+          '#items' => [],
+          '#empty' => $this->t('No selection'),
         ];
+        if (count($this->tempStoreData['list']) > count($page_selected)) {
+          foreach ($this->tempStoreData['list'] as $bulk_form_key => $item) {
+            if (!in_array($bulk_form_key, $page_selected)) {
+              $form['header'][$this->options['id']]['multipage']['list']['#items'][] = $item[4];
+            }
+          }
+          $form['header'][$this->options['id']]['multipage']['clear'] = [
+            '#type' => 'submit',
+            '#value' => $this->t('Clear'),
+            '#submit' => [[$this, 'clearSelection']],
+            '#limit_validation_errors' => [],
+          ];
+        }
       }
 
       // Select all results checkbox.
