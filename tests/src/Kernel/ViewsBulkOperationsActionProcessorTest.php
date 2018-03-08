@@ -11,6 +11,19 @@ use Drupal\node\NodeInterface;
 class ViewsBulkOperationsActionProcessorTest extends ViewsBulkOperationsKernelTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
+    parent::setUp();
+
+    $this->createTestNodes([
+      'page' => [
+        'count' => 20,
+      ],
+    ]);
+  }
+
+  /**
    * Tests general functionality of ViewsBulkOperationsActionProcessor.
    *
    * @covers ::getPageList
@@ -46,7 +59,11 @@ class ViewsBulkOperationsActionProcessorTest extends ViewsBulkOperationsKernelTe
       ],
     ];
 
-    $vbo_data['list'] = $this->getRandomList($vbo_data, 5);
+    // Get list of rows to process from different view pages.
+    $selection = [0, 3, 6, 8, 15, 16, 18];
+    $vbo_data['list'] = $this->getResultsList($vbo_data, $selection);
+
+    // Execute the action.
     $results = $this->executeAction($vbo_data);
 
     $nodeStorage = $this->container->get('entity_type.manager')->getStorage('node');

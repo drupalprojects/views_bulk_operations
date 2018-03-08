@@ -11,6 +11,20 @@ use Drupal\views\Views;
 class ViewsBulkOperationsDataServiceTest extends ViewsBulkOperationsKernelTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
+    parent::setUp();
+
+    $this->createTestNodes([
+      'page' => [
+        'languages' => ['pl', 'es', 'it', 'fr', 'de'],
+        'count' => 20,
+      ],
+    ]);
+  }
+
+  /**
    * Tests the getEntityDefault() method.
    *
    * @covers ::getEntityDefault

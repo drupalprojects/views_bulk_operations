@@ -20,6 +20,7 @@ abstract class ViewsBulkOperationsKernelTestBase extends KernelTestBase {
     createNode as drupalCreateNode;
   }
 
+  // To be removed.
   const TEST_NODES_COUNT = 10;
 
   const VBO_DEFAULTS = [
@@ -32,6 +33,14 @@ abstract class ViewsBulkOperationsKernelTestBase extends KernelTestBase {
     'batch_size' => 10,
     'relationship_id' => 'none',
   ];
+
+  /**
+   * Test node types already created.
+   *
+   * @var array
+   */
+  protected $testNodesTypes;
+
 
   /**
    * Test nodes data including titles and languages.
@@ -92,51 +101,67 @@ abstract class ViewsBulkOperationsKernelTestBase extends KernelTestBase {
       'language',
     ]);
 
-    $languages = ['pl', 'es', 'it', 'fr', 'de'];
-    $count_languages = count($languages);
-    for ($i = 0; $i < $count_languages; $i++) {
-      $language = ConfigurableLanguage::createFromLangcode($languages[$i]);
-      $language->save();
-    }
-
-    $type = NodeType::create([
-      'type' => 'page',
-      'name' => 'page',
-    ]);
-    $type->save();
-
-    $this->container->get('content_translation.manager')->setEnabled('node', 'page', TRUE);
-    $this->container->get('entity_type.manager')->clearCachedDefinitions();
-
-    // Create some test nodes with translations.
-    $this->testNodesData = [];
-    $time = REQUEST_TIME;
-    for ($i = 0; $i < static::TEST_NODES_COUNT; $i++) {
-      $time -= $i;
-      $title = 'Title ' . $i;
-      $node = $this->drupalCreateNode([
-        'type' => 'page',
-        'title' => $title,
-        'sticky' => FALSE,
-        'created' => $time,
-        'changed' => $time,
-      ]);
-      $this->testNodesData[$node->id()]['en'] = $title;
-      $this->resultsCount++;
-
-      $langcode = $languages[rand(0, $count_languages - 1)];
-      $title = 'Translated title ' . $langcode . ' ' . $i;
-      $translation = $node->addTranslation($langcode, [
-        'title' => $title,
-      ]);
-      $translation->save();
-      $this->testNodesData[$node->id()][$langcode] = $title;
-      $this->resultsCount++;
-    }
-
     // Get VBO view data service.
     $this->vboDataService = $this->container->get('views_bulk_operations.data');
+  }
 
+  /**
+   * Create some test nodes.
+   *
+   * @param array $test_node_data
+   *   Describes test node bundles and properties.
+   *
+   * @see Drupal\Tests\views_bulk_operations\Kernel\ViewsBulkOperationsDataServiceTest::setUp()
+   */
+  protected function createTestNodes(array $test_node_data) {
+    $this->testNodesData = [];
+    foreach ($test_node_data as $type_name => $type_data) {
+      $type = NodeType::create([
+        'type' => $type_name,
+        'name' => $type_name,
+      ]);
+      $type->save();
+
+      $count_languages = isset($type_data['languages']) ? count($type_data['languages']) : 0;
+      if ($count_languages) {
+        for ($i = 0; $i < $count_languages; $i++) {
+          $language = ConfigurableLanguage::createFromLangcode($type_data['languages'][$i]);
+          $language->save();
+        }
+        $this->container->get('content_translation.manager')->setEnabled('node', $type_name, TRUE);
+        // $this->container->get('entity_type.manager')->clearCachedDefinitions();
+      }
+
+      // Create some test nodes.
+      $time = REQUEST_TIME;
+      if (!isset($type_data['count'])) {
+        $type_data['count'] = 10;
+      }
+      for ($i = 0; $i < $type_data['count']; $i++) {
+        $time -= $i;
+        $title = 'Title ' . $i;
+        $node = $this->drupalCreateNode([
+          'type' => $type_name,
+          'title' => $title,
+          'sticky' => FALSE,
+          'created' => $time,
+          'changed' => $time,
+        ]);
+        $this->testNodesData[$node->id()]['en'] = $title;
+
+        if ($count_languages) {
+          // It doesn't really matter to which languages we translate
+          // from the API point of view so some randomness should be fine.
+          $langcode = $type_data['languages'][rand(0, $count_languages - 1)];
+          $title = 'Translated title ' . $langcode . ' ' . $i;
+          $translation = $node->addTranslation($langcode, [
+            'title' => $title,
+          ]);
+          $translation->save();
+          $this->testNodesData[$node->id()][$langcode] = $title;
+        }
+      }
+    }
   }
 
   /**
@@ -158,9 +183,6 @@ abstract class ViewsBulkOperationsKernelTestBase extends KernelTestBase {
     $view->built = FALSE;
     $view->executed = FALSE;
 
-    // We will need total rows count for most cases.
-    $view->get_total_rows = TRUE;
-
     return $view;
   }
 
@@ -169,13 +191,13 @@ abstract class ViewsBulkOperationsKernelTestBase extends KernelTestBase {
    *
    * @param array $vbo_data
    *   An array of data passed to VBO Processor service.
-   * @param int $limit
-   *   Number of list items to return.
+   * @param array $deltas
+   *   Array of result rows deltas.
    *
    * @return array
    *   List of results to process.
    */
-  protected function getRandomList(array $vbo_data, $limit) {
+  protected function getResultsList(array $vbo_data, array $deltas) {
     // Merge in defaults.
     $vbo_data += static::VBO_DEFAULTS;
 
@@ -192,17 +214,14 @@ abstract class ViewsBulkOperationsKernelTestBase extends KernelTestBase {
     $view->execute();
 
     $this->vboDataService->init($view, $view->getDisplay(), $vbo_data['relationship_id']);
-    $total_results = $this->vboDataService->getTotalResults();
-    $numbers = range(0, $total_results - 1);
-    shuffle($numbers);
 
     $list = [];
     $base_field = $view->storage->get('base_field');
-    for ($i = 0; $i < $limit; $i++) {
-      $entity = $this->vboDataService->getEntity($view->result[$numbers[$i]]);
+    foreach ($deltas as $delta) {
+      $entity = $this->vboDataService->getEntity($view->result[$delta]);
 
       $list[] = [
-        $view->result[$numbers[$i]]->{$base_field},
+        $view->result[$delta]->{$base_field},
         $entity->language()->getId(),
         $entity->getEntityTypeId(),
         $entity->id(),
@@ -226,6 +245,7 @@ abstract class ViewsBulkOperationsKernelTestBase extends KernelTestBase {
     $vbo_data += static::VBO_DEFAULTS;
 
     $view = $this->initializeView($vbo_data);
+    $view->get_total_rows = TRUE;
 
     $view->execute();
 
