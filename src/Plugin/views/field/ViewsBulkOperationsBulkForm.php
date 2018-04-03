@@ -71,11 +71,11 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
   protected $currentUser;
 
   /**
-   * The current URL object.
+   * The request stack.
    *
-   * @var \Drupal\Core\Url
+   * @var \Symfony\Component\HttpFoundation\RequestStack
    */
-  protected $url;
+  protected $requestStack;
 
   /**
    * An array of actions that can be executed.
@@ -141,7 +141,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
     $this->actionProcessor = $actionProcessor;
     $this->tempStoreFactory = $tempStoreFactory;
     $this->currentUser = $currentUser;
-    $this->url = Url::createFromRequest($requestStack->getCurrentRequest());
+    $this->requestStack = $requestStack;
   }
 
   /**
@@ -212,7 +212,7 @@ class ViewsBulkOperationsBulkForm extends FieldPluginBase implements CacheableDe
       'batch_size' => $this->options['batch'] ? $this->options['batch_size'] : 0,
       'total_results' => $this->viewData->getTotalResults(),
       'arguments' => $this->view->args,
-      'redirect_url' => $this->url,
+      'redirect_url' => Url::createFromRequest($this->requestStack->getCurrentRequest()),
       'exposed_input' => $this->view->getExposedInput(),
     ];
 
