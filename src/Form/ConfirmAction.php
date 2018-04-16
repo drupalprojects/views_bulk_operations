@@ -87,8 +87,6 @@ class ConfirmAction extends FormBase {
       return;
     }
 
-    $form_state->setStorage($form_data);
-
     if (!empty($form_data['entity_labels'])) {
       $form['list'] = [
         '#theme' => 'item_list',
@@ -114,6 +112,8 @@ class ConfirmAction extends FormBase {
       ],
     ];
 
+    $form_state->set('views_bulk_operations', $form_data);
+
     return $form;
   }
 
@@ -121,7 +121,7 @@ class ConfirmAction extends FormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    $form_data = $form_state->getStorage();
+    $form_data = $form_state->get('views_bulk_operations');
     $this->deleteTempstoreData($form_data['view_id'], $form_data['display_id']);
     $this->actionProcessor->executeProcessing($form_data);
     $form_state->setRedirectUrl($form_data['redirect_url']);
