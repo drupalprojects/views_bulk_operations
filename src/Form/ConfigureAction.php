@@ -114,6 +114,7 @@ class ConfigureAction extends FormBase {
         [$this, 'submitForm'],
       ],
     ];
+    $this->addCancelButton($form);
 
     $action = $this->actionManager->createInstance($form_data['action_id']);
 

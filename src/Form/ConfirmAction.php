@@ -111,6 +111,7 @@ class ConfirmAction extends FormBase {
         [$this, 'submitForm'],
       ],
     ];
+    $this->addCancelButton($form);
 
     $form_state->set('views_bulk_operations', $form_data);
 

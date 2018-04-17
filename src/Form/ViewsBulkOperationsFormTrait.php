@@ -3,6 +3,7 @@
 namespace Drupal\views_bulk_operations\Form;
 
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Form\FormStateInterface;
 
 /**
  * Defines common methods for Views Bulk Operations forms.
@@ -160,6 +161,36 @@ trait ViewsBulkOperationsFormTrait {
    */
   protected function deleteTempstoreData($view_id = NULL, $display_id = NULL) {
     return $this->getTempstore($view_id, $display_id)->delete($this->currentUser()->id());
+  }
+
+  /**
+   * Add a cancel button into a VBO form.
+   *
+   * @param array $form
+   *   The form definition.
+   */
+  protected function addCancelButton(array &$form) {
+    $form['actions']['cancel'] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Cancel'),
+      '#submit' => [
+        [$this, 'cancelForm'],
+      ],
+    ];
+  }
+
+  /**
+   * Submit callback to cancel an action and return to the view.
+   *
+   * @param array $form
+   *   The form definition.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function cancelForm(array &$form, FormStateInterface $form_state) {
+    $form_data = $form_state->get('views_bulk_operations');
+    drupal_set_message($this->t('Canceled "%action".', ['%action' => $form_data['action_label']]));
+    $form_state->setRedirectUrl($form_data['redirect_url']);
   }
 
 }
