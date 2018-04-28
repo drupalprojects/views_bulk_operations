@@ -60,7 +60,10 @@
      * @param {bool} state
      * @param {string} value
      */
-    update: function (state, index, value = null) {
+    update: function (state, index, value) {
+      if (value === undefined) {
+        value = null;
+      }
       if (this.view_id.length && this.display_id.length) {
         var list = {};
         if (value && value != 'on') {
